@@ -1,7 +1,0 @@
-# Core stack for src/process.py (preprocessing & plots)
-numpy>=1.23
-scipy>=1.10
-h5py>=3.8
-matplotlib>=3.7
-
-# Torch (src/network.py): pip install torch or: pip install -e '.[training]'
