@@ -212,3 +212,28 @@ def run_exploration(base_path: str | Path, *, patient_label: str | None = None) 
     plot_arousal_zoom(signals, arousals, base.name)
 
     print("\nListo.")
+
+
+def plot_history(history, save_path=None):
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+    # Plot Loss
+    axes[0].plot(history['train_loss'], label='Train Loss', color='tab:blue')
+    axes[0].plot(history['val_loss'], label='Val Loss', color='tab:red', linestyle='--')
+    axes[0].set_title('Training & Validation Loss')
+    axes[0].set_xlabel('Epoch')
+    axes[0].set_ylabel('BCE Loss')
+    axes[0].legend()
+
+    # Plot Accuracy
+    axes[1].plot(history['val_acc'], label='Val Accuracy', color='tab:green')
+    axes[1].set_title('Validation Accuracy')
+    axes[1].set_xlabel('Epoch')
+    axes[1].set_ylabel('Accuracy (%)')
+    axes[1].set_ylim(0, 100)
+    axes[1].legend()
+
+    plt.tight_layout()
+    if save_path:
+        plt.savefig(save_path / "training_curves.png", dpi=300)
+    plt.close(fig) # Keeps the loop fast
