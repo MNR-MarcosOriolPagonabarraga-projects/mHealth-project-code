@@ -1,4 +1,4 @@
-import argparse
+import random
 from pathlib import Path
 import numpy as np
 from src.process import PatientProcessor
@@ -7,30 +7,73 @@ from src.config import PreprocessConfig
 RAW_DIR = Path("data/raw")
 OUT_DIR = Path("data/processed")
 
+
+def process_and_aggregate(patient_dirs, processor, split_name):
+    """Processes a list of patients, balances them, and saves a single .npz file."""
+    all_signals = []
+    all_labels = []
+    
+    # We only need to save these once
+    fs = None
+    ch_names = None
+    
+    print(f"\n--- Processing {split_name.upper()} Set ({len(patient_dirs)} patients) ---")
+    
+    for p_dir in patient_dirs:
+        print(f"  -> {p_dir.name}...", end=" ")
+
+        # 1. Extract features
+        raw_features = processor(p_dir)
+        
+        # Store constants on the first successful patient
+        if fs is None:
+            fs = raw_features["fs"]
+            ch_names = raw_features["ch_names"]
+
+            
+        # 3. Store in RAM
+        all_signals.append(raw_features["signals"])
+        all_labels.append(raw_features["labels"])
+        
+        print(f"Kept {len(raw_features['labels'])} windows.")
+
+    # 4. Concatenate all patients into master arrays
+    print(f"\nAggregating {split_name} data...")
+    final_signals = np.concatenate(all_signals, axis=0)
+    final_labels = np.concatenate(all_labels, axis=0)
+    
+    print(f"Total {split_name} shape: Signals: {final_signals.shape}, Labels: {final_labels.shape}")
+    
+    # 5. Save to disk
+    out_path = OUT_DIR / f"{split_name}.npz"
+    np.savez_compressed(
+        out_path, 
+        signals=final_signals, 
+        labels=final_labels, 
+        fs=fs, 
+        ch_names=ch_names
+    )
+    print(f"[+] Saved {split_name} to {out_path.name}")
+
 def main():
     cfg = PreprocessConfig()
     processor = PatientProcessor(cfg)
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Find all patient directories (e.g., 0005, 0029)
-    patient_dirs = [d for d in RAW_DIR.iterdir() if d.is_dir()]
+    # Find all patients
+    patient_dirs = sorted([d for d in RAW_DIR.iterdir() if d.is_dir()])
     
-    print(f"Found {len(patient_dirs)} patients. Starting processing...")
-
-    for p_dir in patient_dirs:
-        print(f"Processing {p_dir.name}...")
-        
-        # Keep the try/except ONLY here at the script level, so one bad patient 
-        # doesn't crash the whole multi-hour batch job.
-        try:
-            features = processor(p_dir)
-            
-            out_file = OUT_DIR / f"tr03-{p_dir.name}_preprocessed.npz"
-            np.savez_compressed(out_file, **features)
-            
-            print(f"  -> Saved {len(features['labels'])} windows to {out_file.name}")
-            
-        except Exception as e:
-            print(f"  [!] Failed to process {p_dir.name}: {e}")
+    # Shuffle patients for random train/test split
+    random.shuffle(patient_dirs)
+    
+    # 80/20 Split
+    split_idx = int(len(patient_dirs) * 0.8)
+    train_patients = patient_dirs[:split_idx]
+    test_patients = patient_dirs[split_idx:]
+    
+    # Process and build files
+    process_and_aggregate(train_patients, processor, "train")
+    process_and_aggregate(test_patients, processor, "test")
 
 if __name__ == "__main__":
     main()

@@ -4,7 +4,7 @@ import numpy as np
 from pathlib import Path
 
 from src.utils import load_signals_and_arousals, describe_recording
-from config import FS, ALL_CHANNELS, EEG_IDX, FOCUS_IDX, VIZ_START_MIN, VIZ_END_MIN, _EXP_COLORS
+from src.config import FS, ALL_CHANNELS, EEG_IDX, FOCUS_IDX, VIZ_START_MIN, VIZ_END_MIN, _EXP_COLORS
 
 
 def _shade_labels(ax, arousal_seg: np.ndarray, t_axis: np.ndarray) -> None:

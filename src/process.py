@@ -1,8 +1,8 @@
 import numpy as np
 from pathlib import Path
 
-from src.utils import load_signals_and_arousals, label_window
-from src.dsp import build_filters, filter_channel, compute_psd
+from src.utils import load_signals_and_arousals, extract_event_locked_windows, downsample_signal
+from src.dsp import build_filters, filter_channel
 from src.config import PreprocessConfig
 
 class PatientProcessor:
@@ -16,23 +16,37 @@ class PatientProcessor:
         """
         # 1. Load Raw Data
         signals_raw, arousals = self._load_raw_data(raw_patient_dir)
-        n_samples = signals_raw.shape[1]
+        signals_raw = self._clip_outliers(signals_raw, self.cfg.clip_threshold)
         
         # 2. Continuous Filtering
         filtered_signals = self._apply_continuous_filters(signals_raw)
 
-        # 3. Windowing & Feature Extraction
-        out_signals, out_psd, out_labels = self._extract_window_features(n_samples, arousals, filtered_signals)
+        # 3. Downsample
+        if self.cfg.downsample_factor > 1:
+            filtered_signals = downsample_signal(filtered_signals, self.cfg.downsample_factor)
+            arousals = arousals[::self.cfg.downsample_factor]
+
+        # 4. Normalize Signals
+        filtered_signals = self._normalize_signals(filtered_signals)
+
+        # 5. Windowing & Feature Extraction
+        out_signals, out_labels = extract_event_locked_windows(
+            filtered_signals, 
+            arousals, 
+            fs=self.cfg.fs,
+            pre_sec=self.cfg.epoch_pre_sec, 
+            post_sec=self.cfg.epoch_post_sec, 
+            neg_ratio=self.cfg.windows_neg_ratio
+        )
 
         return {
             "patient": raw_patient_dir.name,
-            "signals": np.stack(out_signals),
-            "psd": np.stack(out_psd),
-            "labels": np.array(out_labels),
+            "signals": out_signals,
+            "labels": out_labels,
             "fs": self.cfg.fs,
             "ch_names": list(self.cfg.eeg_indices.keys())
         }
-    
+
     def _load_raw_data(self, raw_patient_dir: Path) -> tuple[np.ndarray, np.ndarray]:
         return load_signals_and_arousals(raw_patient_dir)
 
@@ -43,30 +57,12 @@ class PatientProcessor:
             for idx in self.cfg.eeg_indices.values()
         ])
         return filtered_signals
+    
+    def _normalize_signals(self, signals: np.ndarray) -> np.ndarray:
+        # Normalize each channel to zero mean and unit variance
+        return (signals - np.mean(signals, axis=1, keepdims=True)) / np.std(signals, axis=1, keepdims=True)
 
-    def _extract_window_features(self, n_samples: int, arousals: np.ndarray, filtered_signals: np.ndarray) -> tuple[list[np.ndarray], list[np.ndarray], list[int]]:
-        ws = self.cfg.win_samples
-        n_windows = n_samples // ws
-        
-        out_signals, out_psd, out_labels = [], [], []
-        
-        for w in range(n_windows):
-            i0, i1 = w * ws, (w + 1) * ws
-            
-            # Determine arousal label for the window
-            lw = label_window(arousals[i0:i1])
-            if lw == -1:
-                continue  # Skip unscored windows
-                
-            win_sig = filtered_signals[:, i0:i1]
-            
-            # Compute PSD for both channels
-            win_psd = np.stack([
-                compute_psd(win_sig[c], self.cfg)[1] for c in range(filtered_signals.shape[0])
-            ])
-            
-            out_signals.append(win_sig)
-            out_psd.append(win_psd)
-            out_labels.append(lw)
-        
-        return out_signals, out_psd, out_labels
+    def _clip_outliers(self, signals: np.ndarray, clip_threshold: float = 200.0) -> np.ndarray:
+        # Clip outliers based on a multiple of the standard deviation
+        mean = np.mean(signals, axis=1, keepdims=True)
+        return np.clip(signals, mean - clip_threshold, mean + clip_threshold)

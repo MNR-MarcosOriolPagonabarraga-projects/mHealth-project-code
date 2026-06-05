@@ -36,17 +36,21 @@ _EXP_COLORS = {
 
 @dataclass
 class PreprocessConfig:
-    fs: int = FS
-    win_sec: int = 30
+    original_fs: int = FS
+    epoch_pre_sec: int = 20
+    epoch_post_sec: int = 15
+    windows_neg_ratio: int = 2
     bp_low_hz: float = 0.5
     bp_high_hz: float = 40.0
-    notch_freq_hz: float = 50.0
+    notch_freq_hz: float = 60.0
     notch_q: float = 30.0
+    downsample_factor: int = 2
     welch_nperseg: int | None = None
     welch_noverlap: int | None = None
     eeg_indices: dict = field(
         default_factory=lambda: {"C3-M2": 2, "C4-M1": 3}
     )
+    clip_threshold: float = 200.0
     
     def __post_init__(self) -> None:
         if self.welch_nperseg is None:
@@ -55,5 +59,13 @@ class PreprocessConfig:
             object.__setattr__(self, "welch_noverlap", self.fs * 2)
 
     @property
+    def win_sec(self) -> int:
+        return self.epoch_pre_sec + self.epoch_post_sec
+
+    @property
     def win_samples(self) -> int:
         return self.fs * self.win_sec
+    
+    @property
+    def fs(self) -> int:
+        return FS // self.downsample_factor
