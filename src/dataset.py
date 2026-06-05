@@ -67,3 +67,24 @@ class PhysNetStftDataset(Dataset):
     def __getitem__(self, idx):
         return self.signals[idx], self.labels[idx]
 
+class PhysNetContextDataset(Dataset):
+    def __init__(self, npz_path):
+        """
+        Loads the pre-aggregated train or test .npz file entirely into RAM.
+        Works flawlessly for small subsets, but will require the caching 
+        technique we discussed earlier if scaled to the full 135 GB dataset.
+        """
+        print(f"Loading {npz_path} into RAM...")
+        data = np.load(npz_path)
+        
+        # Convert to PyTorch tensors
+        self.signals = torch.tensor(data['eeg_windows'], dtype=torch.float32)
+        self.context = torch.tensor(data['context_windows'])        
+        self.labels = torch.tensor(data['labels'], dtype=torch.float32)
+        
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        return self.signals[idx], self.context[idx], self.labels[idx]
+

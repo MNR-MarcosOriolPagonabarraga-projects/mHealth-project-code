@@ -10,7 +10,8 @@ OUT_DIR = Path("data/processed")
 
 def process_and_aggregate(patient_dirs, processor, split_name):
     """Processes a list of patients, balances them, and saves a single .npz file."""
-    all_windows = []
+    all_contexts = []
+    all_signals = []
     all_labels = []
     
     # We only need to save these once
@@ -32,23 +33,26 @@ def process_and_aggregate(patient_dirs, processor, split_name):
 
             
         # 3. Store in RAM
-        all_windows.append(raw_features["stft_windows"])
+        all_contexts.append(raw_features["context_windows"])
+        all_signals.append(raw_features["eeg_windows"])
         all_labels.append(raw_features["labels"])
         
         print(f"Kept {len(raw_features['labels'])} windows.")
 
     # 4. Concatenate all patients into master arrays
     print(f"\nAggregating {split_name} data...")
-    final_windows = np.concatenate(all_windows, axis=0)
+    final_contexts = np.concatenate(all_contexts, axis=0)
+    final_signals = np.concatenate(all_signals, axis=0)
     final_labels = np.concatenate(all_labels, axis=0)
     
-    print(f"Total {split_name} shape: Signals: {final_windows.shape}, Labels: {final_labels.shape}")
+    print(f"Total {split_name} shape: Signals: {final_contexts.shape}, Labels: {final_labels.shape}")
     
     # 5. Save to disk
     out_path = OUT_DIR / f"{split_name}.npz"
     np.savez_compressed(
         out_path, 
-        stft_windows=final_windows, 
+        eeg_windows=final_signals,
+        context_windows=final_contexts, 
         labels=final_labels, 
         fs=fs, 
         ch_names=ch_names

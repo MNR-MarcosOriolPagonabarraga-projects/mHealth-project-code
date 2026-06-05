@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+import seaborn as sns
 import numpy as np
 from pathlib import Path
 
@@ -215,25 +216,79 @@ def run_exploration(base_path: str | Path, *, patient_label: str | None = None) 
 
 
 def plot_history(history, save_path=None):
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    """
+    Plots the training curves tracking Loss, Precision, Recall, and the F2 Score.
+    """
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 
-    # Plot Loss
-    axes[0].plot(history['train_loss'], label='Train Loss', color='tab:blue')
-    axes[0].plot(history['val_loss'], label='Val Loss', color='tab:red', linestyle='--')
-    axes[0].set_title('Training & Validation Loss')
-    axes[0].set_xlabel('Epoch')
-    axes[0].set_ylabel('BCE Loss')
+    # 1. Plot Loss
+    axes[0].plot(history['train_loss'], label='Train Loss', color='tab:blue', linewidth=2)
+    axes[0].plot(history['val_loss'], label='Val Loss', color='tab:red', linestyle='--', linewidth=2)
+    axes[0].set_title('Training & Validation Loss', fontsize=12, fontweight='bold')
+    axes[0].set_xlabel('Epoch', fontsize=10)
+    axes[0].set_ylabel('BCE Loss', fontsize=10)
+    axes[0].grid(True, linestyle=':', alpha=0.6)
     axes[0].legend()
 
-    # Plot Accuracy
-    axes[1].plot(history['val_acc'], label='Val Accuracy', color='tab:green')
-    axes[1].set_title('Validation Accuracy')
-    axes[1].set_xlabel('Epoch')
-    axes[1].set_ylabel('Accuracy (%)')
-    axes[1].set_ylim(0, 100)
-    axes[1].legend()
+    # 2. Plot Clinical Metrics (Precision, Recall, F2)
+    # Multiplying by 100 to display as clean percentages
+    val_f2_pct = [f * 100 for f in history['val_f2']]
+    val_rec_pct = [r * 100 for r in history['val_recall']]
+    val_prec_pct = [p * 100 for p in history['val_precision']]
+
+    axes[1].plot(val_f2_pct, label='Val F2 Score (Primary)', color='tab:green', linewidth=2.5)
+    axes[1].plot(val_rec_pct, label='Val Recall (Sensitivity)', color='tab:orange', linestyle=':', linewidth=2)
+    axes[1].plot(val_prec_pct, label='Val Precision', color='tab:purple', linestyle='-.', linewidth=2)
+    
+    axes[1].set_title('Validation Performance (Clinical Metrics)', fontsize=12, fontweight='bold')
+    axes[1].set_xlabel('Epoch', fontsize=10)
+    axes[1].set_ylabel('Score (%)', fontsize=10)
+    axes[1].set_ylim(0, 105)
+    axes[1].grid(True, linestyle=':', alpha=0.6)
+    axes[1].legend(loc='lower right')
 
     plt.tight_layout()
     if save_path:
         plt.savefig(save_path / "training_curves.png", dpi=300)
-    plt.close(fig) # Keeps the loop fast
+    plt.close(fig)
+
+
+def plot_epoch_confusion_matrix(tp, fp, fn, tn, save_path):
+    """
+    Generates and saves a clean Seaborn heatmap of the confusion matrix for a specific epoch.
+    """
+    # Construct the standard 2x2 confusion matrix array
+    # Format: [[TN, FP], [FN, TP]]
+    cm = np.array([[tn, fp], [fn, tp]])
+    
+    fig, ax = plt.subplots(figsize=(6, 5))
+    
+    # Generate labels containing both raw count and relative percentage
+    total_samples = np.sum(cm) + 1e-8
+    labels = [
+        [f"{tn}\n({tn/total_samples*100:.1f}%)", f"{fp}\n({fp/total_samples*100:.1f}%)"],
+        [f"{fn}\n({fn/total_samples*100:.1f}%)", f"{tp}\n({tp/total_samples*100:.1f}%)"]
+    ]
+    labels = np.array(labels)
+    
+    # Plot using a clean, readable color palette (Blues highlight true predictions nicely)
+    sns.heatmap(
+        cm, 
+        annot=labels, 
+        fmt="", 
+        cmap="Blues", 
+        cbar=False, 
+        ax=ax,
+        xticklabels=["No Arousal", "Arousal"],
+        yticklabels=["No Arousal", "Arousal"],
+        annot_kws={"size": 11, "weight": "bold"}
+    )
+    
+    ax.set_title(f"Confusion Matrix", fontsize=13, fontweight='bold', pad=10)
+    ax.set_xlabel("Predicted Label", fontsize=11, labelpad=10)
+    ax.set_ylabel("True Ground-Truth Label", fontsize=11, labelpad=10)
+    
+    plt.tight_layout()
+    # Save with a sequential naming format inside your timestamped RUN_DIR
+    plt.savefig(save_path / f"confusion_matrix.png", dpi=150)
+    plt.close(fig)
