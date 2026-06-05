@@ -10,6 +10,27 @@ from src.networks.stft_cnn import StftArousalNet
 from src.dataset import PhysNetStftDataset 
 from src.viz import plot_history
 
+def apply_spec_augment(signals, max_mask_pct=0.1):
+    """Applies random time and frequency masking to a batch of STFT signals."""
+    # Assuming signals shape: [batch, channels, freq, time] or [batch, freq, time]
+    masked_signals = signals.clone()
+    batch_size, _, freq_bins, time_steps = masked_signals.shape
+    
+    for i in range(batch_size):
+        # Frequency masking
+        mask_f = int(freq_bins * max_mask_pct)
+        if mask_f > 0:
+            f0 = torch.randint(0, freq_bins - mask_f, (1,)).item()
+            masked_signals[i, :, f0:f0+mask_f, :] = 0.0
+            
+        # Time masking
+        mask_t = int(time_steps * max_mask_pct)
+        if mask_t > 0:
+            t0 = torch.randint(0, time_steps - mask_t, (1,)).item()
+            masked_signals[i, :, :, t0:t0+mask_t] = 0.0
+            
+    return masked_signals
+
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
     print(f"[*] Training on device: {device.type.upper()}")
@@ -26,8 +47,8 @@ def main():
     train_ds = PhysNetStftDataset(Path("data/processed/train.npz"))
     val_ds = PhysNetStftDataset(Path("data/processed/test.npz"))
     
-    train_loader = DataLoader(train_ds, batch_size=128, shuffle=True, drop_last=True, num_workers=2, pin_memory=True)
-    val_loader = DataLoader(val_ds, batch_size=128, shuffle=False, num_workers=2, pin_memory=True)
+    train_loader = DataLoader(train_ds, batch_size=64, shuffle=True, drop_last=True, num_workers=2, pin_memory=True)
+    val_loader = DataLoader(val_ds, batch_size=64, shuffle=False, num_workers=2, pin_memory=True)
 
     # Lightweight 2D Embedded Model
     model = StftArousalNet().to(device)
@@ -41,7 +62,7 @@ def main():
     EPOCHS = 50
     PRINT_EVERY = 1 
     
-    optimizer = optim.AdamW(model.parameters(), lr=5e-4, weight_decay=1e-3)
+    optimizer = optim.AdamW(model.parameters(), lr=2e-5, weight_decay=1e-3)
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS, eta_min=1e-6)
 
     for epoch in range(EPOCHS):
@@ -54,16 +75,37 @@ def main():
         
         for signals, labels in pbar:
             signals, labels = signals.to(device), labels.to(device).float()
+            
+            # 1. Apply SpecAugment first to mask random time/freq bands
+            signals = apply_spec_augment(signals, max_mask_pct=0.15)
 
             optimizer.zero_grad()
-            logits = model(signals)
-            loss = criterion(logits, labels)
-            loss.backward()
             
+            # 2. Apply Mixup to blend samples and smooth out the decision boundary
+            alpha = 0.5  # Controls the mixing distribution
+            if alpha > 0 and model.training:
+                # Sample interpolation weight from Beta distribution
+                lam = torch.distributions.Beta(alpha, alpha).sample().item()
+                perm = torch.randperm(signals.size(0)).to(device)
+                
+                # Blend inputs and separate targets
+                mixed_signals = lam * signals + (1 - lam) * signals[perm]
+                labels_a, labels_b = labels, labels[perm]
+                
+                logits = model(mixed_signals)
+                # Linear interpolation of the BCE loss
+                loss = lam * criterion(logits, labels_a) + (1 - lam) * criterion(logits, labels_b)
+            else:
+                # Fallback if mixup is skipped
+                logits = model(signals)
+                loss = criterion(logits, labels)
+            
+            loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optimizer.step()
             
-            # Calculate batch accuracy safely (view_as prevents hidden broadcasting bugs)
+            # 3. Calculate batch accuracy safely 
+            # (Note: we track accuracy against clean, un-shuffled targets for clearer telemetry)
             preds = (torch.sigmoid(logits) >= 0.5).float()
             batch_correct = (preds.view_as(labels) == labels).sum().item()
             batch_acc = batch_correct / labels.size(0)

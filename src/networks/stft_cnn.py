@@ -2,27 +2,19 @@ import torch
 import torch.nn as nn
 
 class MobileConv2dBlock(nn.Module):
-    """
-    Lightweight 2D Depthwise Separable Convolution block with Batch Normalization 
-    and ReLU activation, engineered specifically for resource-constrained edge hardware.
-    """
     def __init__(self, in_ch, out_ch, stride=1):
         super().__init__()
-        # Depthwise Convolution: Filters each channel independently spatial-wise
+        # Fix padding to 2 so spatial downsampling is handled EXCLUSIVELY by stride
         self.depthwise = nn.Conv2d(
-            in_ch, in_ch, kernel_size=5, stride=stride, padding=1, 
+            in_ch, in_ch, kernel_size=5, stride=stride, padding=2, 
             groups=in_ch, bias=False
         )
-        # Pointwise Convolution: Projects and mixes channel-wise features
         self.pointwise = nn.Conv2d(in_ch, out_ch, kernel_size=1, bias=False)
         self.bn = nn.BatchNorm2d(out_ch)
         self.relu = nn.ReLU()
 
     def forward(self, x):
-        x = self.depthwise(x)
-        x = self.pointwise(x)
-        return self.relu(self.bn(x))
-
+        return self.relu(self.bn(self.pointwise(self.depthwise(x))))
 
 class StftArousalNet(nn.Module):
     def __init__(self, in_channels=2):
@@ -30,18 +22,18 @@ class StftArousalNet(nn.Module):
 
         # Standard 2D Conv to expand channels without depthwise grouping
         self.stem = nn.Sequential(
-            nn.Conv2d(in_channels, 24, kernel_size=3, stride=2, padding=1, bias=False),
-            nn.BatchNorm2d(24),
+            nn.Conv2d(in_channels, 48, kernel_size=3, stride=2, padding=1, bias=False),
+            nn.BatchNorm2d(48),
             nn.ReLU()
         )
         
         # Depthwise Separable blocks
-        self.stage2 = MobileConv2dBlock(24, 48, stride=2)
-        self.stage3 = MobileConv2dBlock(48, 72, stride=2)
-        self.stage4 = MobileConv2dBlock(72, 96, stride=2)
+        self.stage2 = MobileConv2dBlock(48, 96, stride=2)
+        self.stage3 = MobileConv2dBlock(96, 144, stride=2)
+        self.stage4 = MobileConv2dBlock(144, 192, stride=2)
 
         self.global_pool = nn.AdaptiveAvgPool2d((1, 1))
-        self.classifier = nn.Linear(96, 1)
+        self.classifier = nn.Linear(192, 1)
 
     def forward(self, x):
         x = self.stem(x)
