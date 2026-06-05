@@ -39,7 +39,7 @@ class PreprocessConfig:
     original_fs: int = FS
     epoch_pre_sec: int = 10
     epoch_post_sec: int = 5
-    windows_neg_ratio: int = 2
+    windows_neg_ratio: int = 1
     bp_low_hz: float = 0.5
     bp_high_hz: float = 40.0
     notch_freq_hz: float = 60.0

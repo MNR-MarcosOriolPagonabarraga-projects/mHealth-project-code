@@ -4,7 +4,6 @@ import torch.nn as nn
 class MobileConv2dBlock(nn.Module):
     def __init__(self, in_ch, out_ch, stride=1):
         super().__init__()
-        # Fix padding to 2 so spatial downsampling is handled EXCLUSIVELY by stride
         self.depthwise = nn.Conv2d(
             in_ch, in_ch, kernel_size=5, stride=stride, padding=2, 
             groups=in_ch, bias=False

@@ -2,7 +2,7 @@ import numpy as np
 from pathlib import Path
 
 from src.utils import load_signals_and_arousals, extract_classification_windows, downsample_signal
-from src.dsp import build_filters, filter_channel, batch_extract_stft
+from src.dsp import build_filters, filter_channel
 from src.config import PreprocessConfig
 
 class PatientProcessor:
@@ -30,19 +30,18 @@ class PatientProcessor:
         filtered_signals = self._normalize_signals(filtered_signals)
 
         # 5. Extract windows of interest
-        out_signals, out_labels = extract_classification_windows(
+        signal_windows, context_windows, out_labels = extract_classification_windows(
             filtered_signals, 
             arousals, 
             fs=self.cfg.fs,
             win_sec=self.cfg.win_sec,
             neg_ratio=self.cfg.windows_neg_ratio
         )
-        # 6. Get the STFT feature
-        stft_windows = batch_extract_stft(out_signals, fs=self.cfg.fs)
 
         return {
             "patient": raw_patient_dir.name,
-            "stft_windows": stft_windows,
+            "eeg_windows": signal_windows,
+            "context_windows": context_windows,
             "labels": out_labels,
             "fs": self.cfg.fs,
             "ch_names": list(self.cfg.eeg_indices.keys())

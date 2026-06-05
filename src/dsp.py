@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from scipy.signal import iirnotch, butter, sosfiltfilt, filtfilt, welch, stft
+from scipy.signal import iirnotch, butter, sosfiltfilt, filtfilt, welch, spectrogram
 
 from src.config import PreprocessConfig
 
@@ -108,3 +108,58 @@ def batch_extract_stft(signals_np: np.ndarray, fs: int = 100, batch_size: int = 
         
     # Stack all chunks back into one massive processed dataset
     return np.concatenate(processed_batches, axis=0)
+
+def compute_full_recording_bandpower(signals: np.ndarray, fs: int, n_fft: int = 512, hop_length: int = 200) -> np.ndarray:
+    """
+    Vectorized PyTorch computation of rolling bandpowers for the entire recording.
+    Signals shape: (n_channels, total_samples)
+    Returns: (total_stft_time_steps, n_channels * 5)
+    """
+    # Move to available device for speed, fallback to CPU
+    device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
+    
+    # Convert numpy array to PyTorch tensor
+    x = torch.from_numpy(signals).float().to(device) # Shape: (n_channels, total_samples)
+    
+    # Compute STFT for all channels simultaneously
+    window = torch.hann_window(n_fft, device=device)
+    stft_out = torch.stft(
+        x, 
+        n_fft=n_fft, 
+        hop_length=hop_length, 
+        window=window, 
+        return_complex=True
+    ) # Shape: (n_channels, freq_bins, total_time_steps)
+    
+    # Square magnitude to get the Spectrogram (saves 50% RAM vs raw complex STFT)
+    spec = torch.abs(stft_out) ** 2 
+    spec = torch.log1p(spec)
+    
+    # Define clinical EEG bands mapped to FFT bin indices
+    bin_res = fs / n_fft
+    bands = {
+        'delta': (int(0.5 / bin_res), int(4.0 / bin_res)),
+        'theta': (int(4.0 / bin_res), int(8.0 / bin_res)),
+        'alpha': (int(8.0 / bin_res), int(12.0 / bin_res)),
+        'sigma': (int(12.0 / bin_res), int(16.0 / bin_res)),
+        'beta':  (int(16.0 / bin_res), int(30.0 / bin_res))
+    }
+    
+    band_powers = []
+    for name, (low_idx, high_idx) in bands.items():
+        # Sum energy across the frequency bins (dim=1) for all channels and time steps
+        power = torch.sum(spec[:, low_idx:high_idx, :], dim=1) # Shape: (n_channels, total_time_steps)
+        band_powers.append(power)
+        
+    # Stack bands: (5, n_channels, total_time_steps)
+    stacked = torch.stack(band_powers, dim=0)
+    
+    # Permute to easily pull time steps: (total_time_steps, n_channels, 5)
+    stacked = stacked.permute(2, 0, 1) 
+    
+    # Flatten channels and bands: (total_time_steps, n_channels * 5)
+    # e.g., if 2 channels, features at step t will be [ch0_delta..ch0_beta, ch1_delta..ch1_beta]
+    total_time_steps = stacked.shape[0]
+    final_features = stacked.reshape(total_time_steps, -1)
+    
+    return final_features.cpu().numpy()
