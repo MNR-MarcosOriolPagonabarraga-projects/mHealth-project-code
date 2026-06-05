@@ -37,8 +37,8 @@ _EXP_COLORS = {
 @dataclass
 class PreprocessConfig:
     original_fs: int = FS
-    epoch_pre_sec: int = 20
-    epoch_post_sec: int = 15
+    epoch_pre_sec: int = 10
+    epoch_post_sec: int = 5
     windows_neg_ratio: int = 2
     bp_low_hz: float = 0.5
     bp_high_hz: float = 40.0
