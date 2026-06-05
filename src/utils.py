@@ -2,6 +2,7 @@ import h5py
 from pathlib import Path
 import numpy as np
 import scipy.io
+from scipy.signal import decimate
 
 from src.config import FS
 
@@ -17,12 +18,12 @@ def _base_without_extension(base_path: str | Path) -> Path:
 def load_signals_and_arousals(
     base_path: str | Path,
     *,
-    include_sleep_stages: bool = False,
+    include_sleep_stages: bool = False
 ) -> tuple[np.ndarray, np.ndarray] | tuple[np.ndarray, np.ndarray, dict[str, np.ndarray]]:
     """Load ``val`` from ``.mat`` and ``data/arousals`` from HDF5 ``-arousal.mat``."""
     base = _base_without_extension(base_path)
-    mat_path = base / f"tr03-{base.name}.mat"
-    arousal_path = base / f"tr03-{base.name}-arousal.mat"
+    mat_path = base / f"{base.name}.mat"
+    arousal_path = base / f"{base.name}-arousal.mat"
     print(mat_path, arousal_path)
 
     mat = scipy.io.loadmat(mat_path)
@@ -39,6 +40,14 @@ def load_signals_and_arousals(
     if include_sleep_stages:
         return signals, arousals, sleep_stages
     return signals, arousals
+
+
+def downsample_signal(signal: np.ndarray, downsample_factor: int) -> np.ndarray:
+    """Safe Downsample using smooth decimation to avoid aliasing."""
+    if downsample_factor <= 1:
+        return signal
+    
+    return decimate(signal, downsample_factor, ftype='iir', zero_phase=True)
 
 
 def describe_recording(arousals: np.ndarray, fs: int = FS) -> None:
@@ -81,8 +90,70 @@ def label_window(arousal_win: np.ndarray) -> int:
     n = len(arousal_win)
     if n == 0:
         return -1
-    if np.sum(arousal_win == 1) / n > 0.5:
+
+    if np.sum(arousal_win == 1) / n > 0.1:  # e.g., >3 seconds in a 30s window
         return 1
     if np.sum(arousal_win == 0) / n > 0.5:
         return 0
     return -1
+
+def extract_event_locked_windows(
+    signals: np.ndarray, 
+    arousals: np.ndarray, 
+    fs: int, 
+    pre_sec: int = 20, 
+    post_sec: int = 15,
+    neg_ratio: int = 2
+) -> tuple[list[np.ndarray], list[np.ndarray]]:
+    
+    pre_samp = pre_sec * fs
+    post_samp = post_sec * fs
+    win_len = pre_samp + post_samp
+    n_channels = signals.shape[0]
+    
+    out_signals = []
+    out_labels = []
+    
+    # Find all Arousal Onsets (where label goes from 0 to 1)
+    onsets = np.where(np.diff(arousals) == 1)[0] + 1 
+    
+    valid_pos_count = 0
+    
+    # Extract Positive Windows
+    for onset in onsets:
+        i0 = onset - pre_samp
+        i1 = onset + post_samp
+        
+        # Check bounds and artifact (-1) presence
+        if i0 >= 0 and i1 <= len(arousals):
+            if not np.any(arousals[i0:i1] == -1):
+                out_signals.append(signals[:, i0:i1])
+                out_labels.append(arousals[i0:i1])
+                valid_pos_count += 1
+                
+    # Extract Negative Windows (1:1 or 1:neg_ratio balance)
+    target_negatives = valid_pos_count * neg_ratio
+    extracted_negatives = 0
+    max_attempts = target_negatives * 10 # Prevent infinite loops
+    attempts = 0
+    
+    while extracted_negatives < target_negatives and attempts < max_attempts:
+        attempts += 1
+        # Pick a random starting point
+        i0 = np.random.randint(0, len(arousals) - win_len)
+        i1 = i0 + win_len
+        
+        # Ensure the entire window is purely 0 (no arousals, no artifacts)
+        if np.all(arousals[i0:i1] == 0):
+            out_signals.append(signals[:, i0:i1])
+            out_labels.append(arousals[i0:i1])
+            extracted_negatives += 1
+
+    if len(out_labels) == 0:
+        clean_signals = np.empty((0, n_channels, win_len), dtype=np.float32)
+        clean_labels = np.empty((0, win_len), dtype=np.int8)
+    else:
+        clean_signals = np.stack(out_signals).astype(np.float32)
+        clean_labels = np.stack(out_labels).astype(np.int8)
+
+    return clean_signals, clean_labels

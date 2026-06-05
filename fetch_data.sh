@@ -1,0 +1,1 @@
+aws s3 sync --no-sign-request s3://physionet-open/challenge-2018/1.0.0/training/ ./data/raw/

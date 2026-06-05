@@ -9,10 +9,10 @@ def build_filters(cfg: PreprocessConfig):
         4,
         [cfg.bp_low_hz, cfg.bp_high_hz],
         btype="bandpass",
-        fs=cfg.fs,
+        fs=cfg.original_fs,
         output="sos",
     )
-    b_notch, a_notch = scipy.signal.iirnotch(cfg.notch_freq_hz, cfg.notch_q, fs=cfg.fs)
+    b_notch, a_notch = scipy.signal.iirnotch(cfg.notch_freq_hz, cfg.notch_q, fs=cfg.original_fs)
     return sos_bp, b_notch, a_notch
 
 
@@ -28,7 +28,7 @@ def compute_psd(sig_win: np.ndarray, cfg: PreprocessConfig):
     
     freqs, psd = scipy.signal.welch(
         sig_win,
-        fs=cfg.fs,
+        fs=cfg.original_fs,
         nperseg=cfg.welch_nperseg,
         noverlap=cfg.welch_noverlap,
         window="hann",
