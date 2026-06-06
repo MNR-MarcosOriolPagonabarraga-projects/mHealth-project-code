@@ -18,7 +18,7 @@ def _base_without_extension(base_path: str | Path) -> Path:
 
 def load_signals_and_arousals(
     base_path: str | Path,
-    *,
+    channels: list,
     include_sleep_stages: bool = False
 ) -> tuple[np.ndarray, np.ndarray] | tuple[np.ndarray, np.ndarray, dict[str, np.ndarray]]:
     """Load ``val`` from ``.mat`` and ``data/arousals`` from HDF5 ``-arousal.mat``."""
@@ -28,7 +28,8 @@ def load_signals_and_arousals(
     print(mat_path, arousal_path)
 
     mat = scipy.io.loadmat(mat_path)
-    signals = mat["val"].astype(np.float32)
+
+    signals = mat["val"][channels, :].astype(np.float32)
 
     sleep_stages: dict[str, np.ndarray] = {}
     with h5py.File(arousal_path, "r") as f:
@@ -250,3 +251,19 @@ def extract_classification_windows(
         clean_labels = np.array(out_labels, dtype=np.int8)
 
     return clean_signals, clean_contexts, clean_labels
+
+def find_stable_blocks(stage_mask: np.ndarray, min_len_samp: int) -> list:
+    """
+    Finds contiguous blocks of 1s in a boolean array that are >= min_len_samp.
+    Returns a list of (onset_index, offset_index) tuples.
+    """
+    edges = np.diff(np.concatenate(([0], stage_mask, [0])))
+    onsets = np.where(edges == 1)[0]
+    offsets = np.where(edges == -1)[0]
+    
+    valid_blocks = []
+    for on, off in zip(onsets, offsets):
+        if (off - on) >= min_len_samp:
+            valid_blocks.append((on, off))
+            
+    return valid_blocks

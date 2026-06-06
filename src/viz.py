@@ -215,42 +215,70 @@ def run_exploration(base_path: str | Path, *, patient_label: str | None = None) 
     print("\nListo.")
 
 
-def plot_history(history, save_path=None):
+def plot_history(history: dict, save_path: Path):
     """
-    Plots the training curves tracking Loss, Precision, Recall, and the F2 Score.
+    Universally plots training history metrics.
+    Automatically detects loss keys and any other evaluation metrics present.
     """
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
-
-    # 1. Plot Loss
-    axes[0].plot(history['train_loss'], label='Train Loss', color='tab:blue', linewidth=2)
-    axes[0].plot(history['val_loss'], label='Val Loss', color='tab:red', linestyle='--', linewidth=2)
-    axes[0].set_title('Training & Validation Loss', fontsize=12, fontweight='bold')
-    axes[0].set_xlabel('Epoch', fontsize=10)
-    axes[0].set_ylabel('BCE Loss', fontsize=10)
-    axes[0].grid(True, linestyle=':', alpha=0.6)
-    axes[0].legend()
-
-    # 2. Plot Clinical Metrics (Precision, Recall, F2)
-    # Multiplying by 100 to display as clean percentages
-    val_f2_pct = [f * 100 for f in history['val_f2']]
-    val_rec_pct = [r * 100 for r in history['val_recall']]
-    val_prec_pct = [p * 100 for p in history['val_precision']]
-
-    axes[1].plot(val_f2_pct, label='Val F2 Score (Primary)', color='tab:green', linewidth=2.5)
-    axes[1].plot(val_rec_pct, label='Val Recall (Sensitivity)', color='tab:orange', linestyle=':', linewidth=2)
-    axes[1].plot(val_prec_pct, label='Val Precision', color='tab:purple', linestyle='-.', linewidth=2)
+    epochs = range(1, len(history['train_loss']) + 1)
     
-    axes[1].set_title('Validation Performance (Clinical Metrics)', fontsize=12, fontweight='bold')
-    axes[1].set_xlabel('Epoch', fontsize=10)
-    axes[1].set_ylabel('Score (%)', fontsize=10)
-    axes[1].set_ylim(0, 105)
-    axes[1].grid(True, linestyle=':', alpha=0.6)
-    axes[1].legend(loc='lower right')
-
+    # 1. Identify what metrics are present in the dictionary dynamically
+    loss_keys = [k for k in history.keys() if 'loss' in k]
+    metric_keys = [k for k in history.keys() if 'loss' not in k]
+    
+    # Setup a clean 1-row, 2-column plot grid
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5), dpi=100)
+    
+    # 2. Universal Loss Subplot (Left)
+    for key in loss_keys:
+        # Standardize labels for the legend (e.g., 'train_loss' -> 'Train Loss')
+        clean_label = key.replace('_', ' ').title()
+        ax1.plot(epochs, history[key], marker='o', label=clean_label, linewidth=1.5)
+        
+    ax1.set_title("Model Loss Progression", fontsize=12, fontweight='bold', pad=10)
+    ax1.set_xlabel("Epochs", fontsize=10)
+    ax1.set_ylabel("Loss Value", fontsize=10)
+    ax1.grid(True, linestyle='--', alpha=0.5)
+    ax1.legend(fontsize=9)
+    
+    # 3. Universal Metrics Subplot (Right)
+    if metric_keys:
+        for key in metric_keys:
+            clean_label = key.replace('_', ' ').title().replace('Val ', 'Validation ')
+            
+            # Check if metrics are raw fractions (0.0 to 1.0) and convert to percentages if true
+            values = history[key]
+            if all(0.0 <= v <= 1.01 for v in values if v is not None):
+                values = [v * 100 for v in values]
+                y_label = "Score (%)"
+            else:
+                y_label = "Value"
+                
+            ax2.plot(epochs, values, marker='s', label=clean_label, linewidth=1.5)
+            
+        ax2.set_title("Validation Performance Metrics", fontsize=12, fontweight='bold', pad=10)
+        ax2.set_xlabel("Epochs", fontsize=10)
+        ax2.set_ylabel(y_label, fontsize=10)
+        
+        # If it's a percentage axis, bound it nicely between 0 and 105%
+        if y_label == "Score (%)":
+            ax2.set_ylim(-5, 105)
+            
+        ax2.grid(True, linestyle='--', alpha=0.5)
+        ax2.legend(fontsize=9)
+    else:
+        # Clean fallback if no validation metrics were gathered yet
+        ax2.text(0.5, 0.5, "No Validation Metrics Tracked", ha='center', va='center', fontsize=12)
+        ax2.axis('off')
+        
+    plt.suptitle("Model Training History Summary", fontsize=14, fontweight='bold', y=0.98)
     plt.tight_layout()
-    if save_path:
-        plt.savefig(save_path / "training_curves.png", dpi=300)
-    plt.close(fig)
+    
+    # Save chart to the designated run folder
+    save_file = save_path / "training_history_curves.png"
+    plt.savefig(save_file, bbox_inches='tight')
+    plt.close()
+    print(f"[+] Saved training evolution curves to: {save_file.name}")
 
 
 def plot_epoch_confusion_matrix(tp, fp, fn, tn, save_path):

@@ -49,13 +49,16 @@ class PatientProcessor:
         }
 
     def _load_raw_data(self, raw_patient_dir: Path) -> tuple[np.ndarray, np.ndarray]:
-        return load_signals_and_arousals(raw_patient_dir, include_sleep_stages=True)
+        return load_signals_and_arousals(
+            raw_patient_dir, 
+            channels=list(self.cfg.eeg_indices.values()), 
+            include_sleep_stages=True)
 
     def _apply_continuous_filters(self, signals_raw: np.ndarray) -> np.ndarray:
         sos_bp, b_notch, a_notch = build_filters(self.cfg)
         filtered_signals = np.stack([
-            filter_channel(signals_raw[idx], sos_bp, b_notch, a_notch) 
-            for idx in self.cfg.eeg_indices.values()
+            filter_channel(chann, sos_bp, b_notch, a_notch) 
+            for chann in signals_raw
         ])
         return filtered_signals
     
