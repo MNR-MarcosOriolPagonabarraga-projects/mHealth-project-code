@@ -23,6 +23,17 @@ def filter_channel(sig: np.ndarray, sos_bp, b_notch, a_notch) -> np.ndarray:
     sig = filtfilt(b_notch, a_notch, sig)
     return sig.astype(np.float32)
 
+def apply_continuous_filters(signals_raw: np.ndarray, cfg) -> np.ndarray:
+        sos_bp, b_notch, a_notch = build_filters(cfg)
+        if signals_raw.ndim > 1:
+            filtered_signals = np.stack([
+                filter_channel(chann, sos_bp, b_notch, a_notch) 
+                for chann in signals_raw
+            ])
+        else:
+            filtered_signals = filter_channel(signals_raw, sos_bp, b_notch, a_notch)
+        return filtered_signals
+
 
 def compute_psd(sig_win: np.ndarray, cfg: PreprocessConfig):
     # Extract the bounds directly from the config object inside the function
@@ -115,6 +126,8 @@ def compute_full_recording_bandpower(signals: np.ndarray, fs: int, n_fft: int = 
     Signals shape: (n_channels, total_samples)
     Returns: (total_stft_time_steps, n_channels * 5)
     """
+    if signals.ndim == 1:
+        signals = signals[np.newaxis, :]
     # Move to available device for speed, fallback to CPU
     device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
     
@@ -133,7 +146,6 @@ def compute_full_recording_bandpower(signals: np.ndarray, fs: int, n_fft: int = 
     
     # Square magnitude to get the Spectrogram (saves 50% RAM vs raw complex STFT)
     spec = torch.abs(stft_out) ** 2 
-    spec = torch.log1p(spec)
     
     # Define clinical EEG bands mapped to FFT bin indices
     bin_res = fs / n_fft
@@ -147,8 +159,8 @@ def compute_full_recording_bandpower(signals: np.ndarray, fs: int, n_fft: int = 
     
     band_powers = []
     for name, (low_idx, high_idx) in bands.items():
-        # Sum energy across the frequency bins (dim=1) for all channels and time steps
         power = torch.sum(spec[:, low_idx:high_idx, :], dim=1) # Shape: (n_channels, total_time_steps)
+        power = torch.log1p(power)
         band_powers.append(power)
         
     # Stack bands: (5, n_channels, total_time_steps)
