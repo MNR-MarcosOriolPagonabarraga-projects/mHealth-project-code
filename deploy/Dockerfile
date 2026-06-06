@@ -9,6 +9,10 @@ RUN apt-get update && apt-get install -y \
     xz-utils \
     git \
     build-essential \
+    cmake \
+    protobuf-compiler \
+    libprotobuf-dev \
+    libonnx-dev \
     gcc-arm-none-eabi \
     qemu-system-arm \
     && rm -rf /var/lib/apt/lists/*
@@ -24,9 +28,13 @@ ENV PATH="/usr/local/zig:${PATH}"
 # Install onnx2c to convert our ONNX model to a pure C header
 RUN git clone https://github.com/kraiskil/onnx2c.git /opt/onnx2c && \
     cd /opt/onnx2c && \
-    make
+    git submodule update --init && \
+    mkdir build && \
+    cd build && \
+    cmake -DCMAKE_BUILD_TYPE=Release .. && \
+    make onnx2c
 
-ENV PATH="/opt/onnx2c:${PATH}"
+ENV PATH="/opt/onnx2c/build:${PATH}"
 
 WORKDIR /workspace
 CMD ["bash"]
