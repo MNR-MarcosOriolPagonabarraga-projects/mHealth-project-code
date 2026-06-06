@@ -15,7 +15,7 @@ class PatientProcessor:
         Assumes a 'happy path' for readability.
         """
         # 1. Load Raw Data
-        signals_raw, arousals = self._load_raw_data(raw_patient_dir)
+        signals_raw, arousals, sleep_stages = self._load_raw_data(raw_patient_dir)
         signals_raw = self._clip_outliers(signals_raw, self.cfg.clip_threshold)
         
         # 2. Continuous Filtering
@@ -42,13 +42,14 @@ class PatientProcessor:
             "patient": raw_patient_dir.name,
             "eeg_windows": signal_windows,
             "context_windows": context_windows,
+            "sleep_stages": sleep_stages,
             "labels": out_labels,
             "fs": self.cfg.fs,
             "ch_names": list(self.cfg.eeg_indices.keys())
         }
 
     def _load_raw_data(self, raw_patient_dir: Path) -> tuple[np.ndarray, np.ndarray]:
-        return load_signals_and_arousals(raw_patient_dir)
+        return load_signals_and_arousals(raw_patient_dir, include_sleep_stages=True)
 
     def _apply_continuous_filters(self, signals_raw: np.ndarray) -> np.ndarray:
         sos_bp, b_notch, a_notch = build_filters(self.cfg)
