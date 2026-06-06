@@ -1,26 +1,32 @@
 from torch import nn
 
-class LowPowerSleepMLP(nn.Module):
-    def __init__(self, num_time_steps=30, num_features=5, num_classes=5):
+class LowPowerConvNet(nn.Module):
+    def __init__(self):
         super().__init__()
-        # 30 * 5 = 150 input features
-        input_dim = num_time_steps * num_features
+        # Input: (Batch, 30 bands/context, 30 steps)
+        self.conv1 = nn.Sequential(
+            nn.Conv1d(30, 16, kernel_size=3, padding=1),
+            nn.BatchNorm1d(16),
+            nn.ReLU(),
+            nn.MaxPool1d(2) # Reduces time steps from 30 to 15
+        )
         
-        # Extremely lightweight bottleneck layers
-        self.network = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(input_dim, 64),
-            nn.LayerNorm(64),
+        # Pattern extraction
+        self.conv2 = nn.Sequential(
+            nn.Conv1d(16, 32, kernel_size=3, padding=1),
+            nn.BatchNorm1d(32),
             nn.ReLU(),
-            nn.Dropout(0.4),
-            nn.Linear(64, 32),
-            nn.LayerNorm(32),
-            nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(32, num_classes)
+            nn.AdaptiveAvgPool1d(1) # Squeezes time down to 1
         )
 
+        self.dropout = nn.Dropout(0.3)
+        self.fc = nn.Linear(32, 4)
+
     def forward(self, x):
-        # Expects input shape: (Batch, 30, 5)
-        return self.network(x)
+        # Permute input to (Batch, Features, Time)
+        x = x.permute(0, 2, 1)
+        x = self.conv1(x)
+        x = self.conv2(x).squeeze(-1)
+        x = self.dropout(x)
+        return self.fc(x)
 

@@ -146,7 +146,6 @@ def compute_full_recording_bandpower(signals: np.ndarray, fs: int, n_fft: int = 
     
     # Square magnitude to get the Spectrogram (saves 50% RAM vs raw complex STFT)
     spec = torch.abs(stft_out) ** 2 
-    spec = torch.log1p(spec)
     
     # Define clinical EEG bands mapped to FFT bin indices
     bin_res = fs / n_fft
@@ -160,8 +159,8 @@ def compute_full_recording_bandpower(signals: np.ndarray, fs: int, n_fft: int = 
     
     band_powers = []
     for name, (low_idx, high_idx) in bands.items():
-        # Sum energy across the frequency bins (dim=1) for all channels and time steps
         power = torch.sum(spec[:, low_idx:high_idx, :], dim=1) # Shape: (n_channels, total_time_steps)
+        power = torch.log1p(power)
         band_powers.append(power)
         
     # Stack bands: (5, n_channels, total_time_steps)

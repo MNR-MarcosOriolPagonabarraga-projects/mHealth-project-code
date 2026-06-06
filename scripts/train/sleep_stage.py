@@ -10,14 +10,14 @@ from sklearn.metrics import f1_score, accuracy_score, confusion_matrix
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from src.networks.sleep_stage import LowPowerSleepMLP
+from src.networks.sleep_stage import LowPowerConvNet
 from src.viz import plot_history
 
 # Global Training Configs
 BATCH_SIZE = 256
-EPOCHS = 30
-LEARNING_RATE = 5e-4
-STAGE_NAMES = ['Wake', 'N1', 'N2', 'N3', 'REM']
+EPOCHS = 40
+LEARNING_RATE = 7e-4
+STAGE_NAMES = ['Wake', 'Light Sleep', 'Deep Sleep', 'REM']
 
 def plot_epoch_confusion_matrix(all_targets, all_preds, stage_names, save_path: Path):
     """
@@ -70,30 +70,6 @@ def plot_epoch_confusion_matrix(all_targets, all_preds, stage_names, save_path: 
     plt.close(fig)
     print(f"[+] Saved breakthrough confusion matrix to: {save_file.name}")
 
-def compute_class_weights(y_train_tensor: torch.Tensor) -> torch.Tensor:
-    y_numpy = y_train_tensor.cpu().numpy()
-    
-    # Count occurrences of each class index (0 through 4)
-    class_counts = np.bincount(y_numpy)
-    total_samples = len(y_numpy)
-    num_classes = len(class_counts)
-    
-    print("\n" + "="*40 + "\nDATASET CLASS DISTRIBUTION\n" + "-"*40)
-    stage_names = ['Wake', 'N1', 'N2', 'N3', 'REM']
-    for idx, count in enumerate(class_counts):
-        percentage = (count / total_samples) * 100
-        print(f"  {stage_names[idx]:<5}: {count:<7,d} samples ({percentage:.2f}%)")
-        
-    weights = total_samples / (num_classes * class_counts)
-    weights = weights / np.mean(weights)
-    
-    print("-"*40)
-    for idx, w in enumerate(weights):
-        print(f"  Calculated Weight for {stage_names[idx]:<5}: {w:.4f}")
-    print("="*40 + "\n")
-    
-    return torch.tensor(weights, dtype=torch.float32)
-
 def apply_time_masking(windows, max_mask_pct=0.15):
     """
     Applies random temporal cutout to (Batch, Time, Features) tensors to prevent overfitting.
@@ -121,7 +97,7 @@ def load_data(split_name):
     data = np.load(file_path)
     
     # Safe key extraction matching your processed naming mapping
-    X = data['context_windows'] if 'context_windows' in data else data['spectral_band_windows']
+    X = data['spectral_band_windows']
     y_onehot = data['sleep_stages']
     y = np.argmax(y_onehot, axis=1)
     
@@ -153,7 +129,7 @@ def main():
     # 1. Pipeline Datasets & Loaders
     X_train, y_train = load_data("sleep_stage_train")
     X_test, y_test = load_data("sleep_stage_test")
-    computed_weights = compute_class_weights(y_train).to(device)
+    computed_weights = torch.tensor([1.1, 0.7, 1.5, 1.5]).to(device)
     
     train_loader = DataLoader(
         TensorDataset(X_train, y_train), 
@@ -172,7 +148,7 @@ def main():
     )
 
     # 2. Network Components
-    model = LowPowerSleepMLP().to(device)
+    model = LowPowerConvNet().to(device)
     criterion = nn.CrossEntropyLoss(weight=computed_weights).to(device)
     
     # Optimization scheduling
@@ -261,7 +237,7 @@ def main():
             best_acc = epoch_acc
             torch.save(checkpoint, RUN_DIR / "best_sleep_mlp.pt")
             print(f"  [+] Found new best model! Saved weight checkpoint (Acc: {best_acc:.4f})")
-            plot_epoch_confusion_matrix(all_preds, all_targets, STAGE_NAMES, save_path=RUN_DIR)
+            plot_epoch_confusion_matrix(all_targets, all_preds, STAGE_NAMES, save_path=RUN_DIR)
 
         plot_history(history, save_path=RUN_DIR)
 
