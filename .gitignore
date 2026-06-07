@@ -1,5 +1,4 @@
 data/*
-*.pt
 *zig-cache/
 
 # Byte-compiled / optimized / DLL files
