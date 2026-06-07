@@ -8,8 +8,15 @@ class SleepDataCalibrator(CalibrationDataReader):
     def __init__(self, data_path):
         # Load a small batch of real data (e.g., 200 samples) to calibrate ranges
         dataset = np.load(data_path)
-        self.data = dataset['spectral_band_windows'][:200].astype(np.float32)
-        self.enum_data = iter([{"input_features": np.expand_dims(x, axis=0)} for x in self.data])
+        self.eeg_windows = dataset['eeg_windows'][:200].astype(np.float32)
+        self.context_windows = dataset['context_windows'][:200].astype(np.float32)
+        paired_data = zip(self.eeg_windows, self.context_windows)
+        self.enum_data = iter(
+            [{
+                "temporal_input": np.expand_dims(eeg, axis=0),
+                "context_input": np.expand_dims(ctx, axis=0).transpose(0, 2, 1)
+            } for eeg, ctx in paired_data]
+        )
 
     def get_next(self):
         return next(self.enum_data, None)
