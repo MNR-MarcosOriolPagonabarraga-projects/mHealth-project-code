@@ -12,7 +12,6 @@ def process_and_aggregate(patient_dirs, processor, split_name):
     """Processes a list of patients, balances them, and saves a single .npz file."""
     all_contexts = []
     all_signals = []
-    all_sleep_stages = []
     all_labels = []
     
     # We only need to save these once
@@ -36,7 +35,6 @@ def process_and_aggregate(patient_dirs, processor, split_name):
         # Store in RAM
         all_contexts.append(raw_features["context_windows"])
         all_signals.append(raw_features["eeg_windows"])
-        all_sleep_stages.append(raw_features["sleep_stages"])
         all_labels.append(raw_features["labels"])
         
         print(f"Kept {len(raw_features['labels'])} windows.")
@@ -45,7 +43,6 @@ def process_and_aggregate(patient_dirs, processor, split_name):
     print(f"\nAggregating {split_name} data...")
     final_contexts = np.concatenate(all_contexts, axis=0)
     final_signals = np.concatenate(all_signals, axis=0)
-    final_sleep_stages = np.concatenate(all_sleep_stages, axis=0)
     final_labels = np.concatenate(all_labels, axis=0)
     
     print(f"Total {split_name} shape: Signals: {final_contexts.shape}, Labels: {final_labels.shape}")
@@ -56,7 +53,6 @@ def process_and_aggregate(patient_dirs, processor, split_name):
         out_path, 
         eeg_windows=final_signals,
         context_windows=final_contexts,
-        sleep_stages = final_sleep_stages, 
         labels=final_labels, 
         fs=fs, 
         ch_names=ch_names

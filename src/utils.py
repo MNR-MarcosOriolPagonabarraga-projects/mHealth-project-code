@@ -175,7 +175,7 @@ def extract_classification_windows(
     n_channels = signals.shape[0]
     
     # Parameters for the rolling STFT window logic
-    n_fft = 512
+    n_fft = 256
     hop_length = 200 # 2-second step size
     
     # Pre-compute the entire recording's timeline of spectral features via PyTorch
@@ -222,35 +222,30 @@ def extract_classification_windows(
     max_attempts = target_negatives * 10 
     attempts = 0
     
+    # Define a safe margin (e.g., 15 seconds)
+    safe_margin = 15 * fs
+
     while extracted_negatives < target_negatives and attempts < max_attempts:
         attempts += 1
-        # Start sampling indexes strictly after the 5-minute context requirements
         i0 = np.random.randint(ctx_samp, len(arousals) - win_samp)
         i1 = i0 + win_samp
         
-        # Ensure the entire 15s window is purely 0
-        if np.all(arousals[i0:i1] == 0):
-            out_signals.append(signals[:, i0:i1])
-            
-            # Pull matching context slice from the pre-computed spectral matrix
-            end_step_idx = i0 // hop_length
-            start_step_idx = end_step_idx - required_ctx_steps
-            ctx_feats = full_spectral_timeline[start_step_idx:end_step_idx, :]
-            out_contexts.append(ctx_feats)
-            
-            out_labels.append(0)
-            extracted_negatives += 1
+        # Check if we have room for the safe margin
+        if i0 - safe_margin >= 0 and i1 + safe_margin < len(arousals):
+            # NEW: Ensure the 15s window AND the 15s buffer on either side are purely 0
+            if np.all(arousals[i0 - safe_margin : i1 + safe_margin] == 0):
+                out_signals.append(signals[:, i0:i1])
+                
+                # Pull matching context slice
+                end_step_idx = i0 // hop_length
+                start_step_idx = end_step_idx - required_ctx_steps
+                ctx_feats = full_spectral_timeline[start_step_idx:end_step_idx, :]
+                out_contexts.append(ctx_feats)
+                
+                out_labels.append(0)
+                extracted_negatives += 1
 
-    if len(out_labels) == 0:
-        clean_signals = np.empty((0, n_channels, win_samp), dtype=np.float32)
-        clean_contexts = np.empty((0, required_ctx_steps, n_channels * 5), dtype=np.float32)
-        clean_labels = np.empty((0,), dtype=np.int8) 
-    else:
-        clean_signals = np.stack(out_signals).astype(np.float32)
-        clean_contexts = np.stack(out_contexts).astype(np.float32)
-        clean_labels = np.array(out_labels, dtype=np.int8)
-
-    return clean_signals, clean_contexts, clean_labels
+    return out_signals, out_contexts, out_labels
 
 def find_stable_blocks(stage_mask: np.ndarray, min_len_samp: int) -> list:
     """

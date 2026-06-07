@@ -81,14 +81,14 @@ class EEGContextNet(nn.Module):
             nn.BatchNorm1d(8),
             nn.ReLU(),
             nn.MaxPool1d(kernel_size=2, stride=2), 
-            nn.Dropout1d(0.2),
+            nn.Dropout1d(0.15),
             
             # Conv 2: Smaller kernel to catch rapid beta/spindle bursts
             nn.Conv1d(in_channels=8, out_channels=16, kernel_size=10, stride=2, padding=4),
             nn.BatchNorm1d(16),
             nn.ReLU(),
             nn.MaxPool1d(kernel_size=2, stride=2),
-            nn.Dropout1d(0.2),
+            nn.Dropout1d(0.15),
             
             # Conv 3: Final temporal features
             nn.Conv1d(in_channels=16, out_channels=32, kernel_size=5, stride=1, padding=2),
@@ -108,7 +108,7 @@ class EEGContextNet(nn.Module):
             nn.Conv1d(in_channels=ctx_in_ch, out_channels=16, kernel_size=7, stride=2, padding=3),
             nn.BatchNorm1d(16),
             nn.ReLU(),
-            nn.Dropout1d(0.2),
+            nn.Dropout1d(0.15),
             
             # Conv 2: Higher level sleep stage transitions
             nn.Conv1d(in_channels=16, out_channels=32, kernel_size=5, stride=2, padding=2),

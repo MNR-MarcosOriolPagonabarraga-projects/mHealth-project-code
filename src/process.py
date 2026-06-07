@@ -15,7 +15,7 @@ class PatientProcessor:
         Assumes a 'happy path' for readability.
         """
         # 1. Load Raw Data
-        signals_raw, arousals, sleep_stages = self._load_raw_data(raw_patient_dir)
+        signals_raw, arousals = self._load_raw_data(raw_patient_dir, sleep_stages=False)
         signals_raw = self._clip_outliers(signals_raw, self.cfg.clip_threshold)
         
         # 2. Continuous Filtering
@@ -26,9 +26,6 @@ class PatientProcessor:
             filtered_signals = downsample_signal(filtered_signals, self.cfg.downsample_factor)
             arousals = arousals[::self.cfg.downsample_factor]
 
-        # 4. Normalize Signals
-        filtered_signals = self._normalize_signals(filtered_signals)
-
         # 5. Extract windows of interest
         signal_windows, context_windows, out_labels = extract_classification_windows(
             filtered_signals, 
@@ -38,21 +35,31 @@ class PatientProcessor:
             neg_ratio=self.cfg.windows_neg_ratio
         )
 
+        signal_windows = self._normalize_signals(signal_windows, axis=2)
+        context_windows = self._normalize_signals(context_windows, axis=1)
+        if len(out_labels) == 0:
+            clean_signals = np.empty((0, 2, 1500), dtype=np.float32)
+            clean_contexts = np.empty((0, 149, 2 * 5), dtype=np.float32)
+            clean_labels = np.empty((0,), dtype=np.int8) 
+        else:
+            clean_signals = np.stack(signal_windows).astype(np.float32)
+            clean_contexts = np.stack(context_windows).astype(np.float32)
+            clean_labels = np.array(out_labels, dtype=np.int8)
+
         return {
             "patient": raw_patient_dir.name,
-            "eeg_windows": signal_windows,
-            "context_windows": context_windows,
-            "sleep_stages": sleep_stages,
-            "labels": out_labels,
+            "eeg_windows": clean_signals,
+            "context_windows": clean_contexts,
+            "labels": clean_labels,
             "fs": self.cfg.fs,
             "ch_names": list(self.cfg.eeg_indices.keys())
         }
 
-    def _load_raw_data(self, raw_patient_dir: Path) -> tuple[np.ndarray, np.ndarray]:
+    def _load_raw_data(self, raw_patient_dir: Path, sleep_stages: bool = False) -> tuple[np.ndarray, np.ndarray]:
         return load_signals_and_arousals(
             raw_patient_dir, 
             channels=list(self.cfg.eeg_indices.values()), 
-            include_sleep_stages=True)
+            include_sleep_stages=sleep_stages)
 
     def _apply_continuous_filters(self, signals_raw: np.ndarray) -> np.ndarray:
         sos_bp, b_notch, a_notch = build_filters(self.cfg)
@@ -62,9 +69,12 @@ class PatientProcessor:
         ])
         return filtered_signals
     
-    def _normalize_signals(self, signals: np.ndarray) -> np.ndarray:
-        # Normalize each channel to zero mean and unit variance
-        return (signals - np.mean(signals, axis=1, keepdims=True)) / np.std(signals, axis=1, keepdims=True)
+    def _normalize_signals(self, signal_windows: np.ndarray, axis: int) -> np.ndarray:
+        if len(signal_windows) > 0:
+            means = np.mean(signal_windows, axis=axis, keepdims=True)
+            stds = np.std(signal_windows, axis=axis, keepdims=True) + 1e-8
+            signal_windows = (signal_windows - means) / stds
+            return signal_windows
 
     def _clip_outliers(self, signals: np.ndarray, clip_threshold: float = 200.0) -> np.ndarray:
         # Clip outliers based on a multiple of the standard deviation
