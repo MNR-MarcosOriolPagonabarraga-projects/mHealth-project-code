@@ -37,10 +37,10 @@ def main():
     # Clean history dictionary (Includes train_loss to prevent your viz.py KeyError)
     history = {'train_loss': [], 'val_loss': [], 'val_precision': [], 'val_f1': []}
     
-    pos_weight = torch.tensor([1]).to(device)
+    pos_weight = torch.tensor([1.2]).to(device)
     criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(device)
     
-    optimizer = optim.AdamW(model.parameters(), lr=5e-4, weight_decay=1e-3)
+    optimizer = optim.AdamW(model.parameters(), lr=5e-4, weight_decay=1e-2)
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS, eta_min=1e-6)
 
     for epoch in range(EPOCHS):
