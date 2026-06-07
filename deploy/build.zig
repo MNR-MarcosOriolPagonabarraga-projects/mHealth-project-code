@@ -18,7 +18,7 @@ pub fn build(b: *std.Build) void {
     // Add generated onnx2c file directly into the build pipeline
     // This compiles sleep_phase_model.c directly into the final executable machine code
     exe.addCSourceFile(.{
-        .file = .{ .path = "src/sleep_phase_model.c" },
+        .file = .{ .path = "src/models/sleep-phase/sleep_phase_model.c" },
         .flags = &[_][]const u8{
             "-std=c99",
             "-O3", // Aggressive math and loop optimizations for inference speed
