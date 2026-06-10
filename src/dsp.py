@@ -128,6 +128,10 @@ def compute_full_recording_bandpower(signals: np.ndarray, fs: int, n_fft: int = 
     """
     if signals.ndim == 1:
         signals = signals[np.newaxis, :]
+
+    if not signals.flags['C_CONTIGUOUS']:
+        signals = np.ascontiguousarray(signals)
+        
     # Move to available device for speed, fallback to CPU
     device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
     
@@ -148,18 +152,22 @@ def compute_full_recording_bandpower(signals: np.ndarray, fs: int, n_fft: int = 
     spec = torch.abs(stft_out) ** 2 
     
     # Define clinical EEG bands mapped to FFT bin indices
-    bin_res = fs / n_fft
+    bin_res = fs / n_fft  # 100 / 256 = 0.3906 Hz
     bands = {
-        'delta': (int(0.5 / bin_res), int(4.0 / bin_res)),
-        'theta': (int(4.0 / bin_res), int(8.0 / bin_res)),
-        'alpha': (int(8.0 / bin_res), int(12.0 / bin_res)),
-        'sigma': (int(12.0 / bin_res), int(16.0 / bin_res)),
-        'beta':  (int(16.0 / bin_res), int(30.0 / bin_res))
+        'delta': (0.5, 4.0),
+        'theta': (4.0, 8.0),
+        'alpha': (8.0, 12.0),
+        'sigma': (12.0, 16.0),
+        'beta':  (16.0, 30.0)
     }
     
     band_powers = []
-    for name, (low_idx, high_idx) in bands.items():
-        power = torch.sum(spec[:, low_idx:high_idx, :], dim=1) # Shape: (n_channels, total_time_steps)
+    for name, (low_hz, high_hz) in bands.items():
+        # The math automatically handles the new 256 grid perfectly
+        low_idx = max(int(low_hz / bin_res), 0)
+        high_idx = min(int(high_hz / bin_res) + 1, spec.shape[1])
+        
+        power = torch.sum(spec[:, low_idx:high_idx, :], dim=1)
         power = torch.log1p(power)
         band_powers.append(power)
         

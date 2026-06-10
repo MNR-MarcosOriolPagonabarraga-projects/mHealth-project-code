@@ -220,7 +220,9 @@ def plot_history(history: dict, save_path: Path):
     Universally plots training history metrics.
     Automatically detects loss keys and any other evaluation metrics present.
     """
-    epochs = range(1, len(history['train_loss']) + 1)
+    # FIX: Dynamically find the number of epochs from whatever the first metric is
+    first_key = list(history.keys())[0]
+    epochs = range(1, len(history[first_key]) + 1)
     
     # 1. Identify what metrics are present in the dictionary dynamically
     loss_keys = [k for k in history.keys() if 'loss' in k]
@@ -230,16 +232,21 @@ def plot_history(history: dict, save_path: Path):
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5), dpi=100)
     
     # 2. Universal Loss Subplot (Left)
-    for key in loss_keys:
-        # Standardize labels for the legend (e.g., 'train_loss' -> 'Train Loss')
-        clean_label = key.replace('_', ' ').title()
-        ax1.plot(epochs, history[key], marker='o', label=clean_label, linewidth=1.5)
-        
-    ax1.set_title("Model Loss Progression", fontsize=12, fontweight='bold', pad=10)
-    ax1.set_xlabel("Epochs", fontsize=10)
-    ax1.set_ylabel("Loss Value", fontsize=10)
-    ax1.grid(True, linestyle='--', alpha=0.5)
-    ax1.legend(fontsize=9)
+    if loss_keys:
+        for key in loss_keys:
+            # Standardize labels for the legend (e.g., 'train_loss' -> 'Train Loss')
+            clean_label = key.replace('_', ' ').title()
+            ax1.plot(epochs, history[key], marker='o', label=clean_label, linewidth=1.5)
+            
+        ax1.set_title("Model Loss Progression", fontsize=12, fontweight='bold', pad=10)
+        ax1.set_xlabel("Epochs", fontsize=10)
+        ax1.set_ylabel("Loss Value", fontsize=10)
+        ax1.grid(True, linestyle='--', alpha=0.5)
+        ax1.legend(fontsize=9)
+    else:
+        # Fallback if no loss metrics were passed
+        ax1.text(0.5, 0.5, "No Loss Metrics Tracked", ha='center', va='center', fontsize=12)
+        ax1.axis('off')
     
     # 3. Universal Metrics Subplot (Right)
     if metric_keys:
@@ -279,7 +286,7 @@ def plot_history(history: dict, save_path: Path):
     plt.savefig(save_file, bbox_inches='tight')
     plt.close()
     print(f"[+] Saved training evolution curves to: {save_file.name}")
-
+    
 
 def plot_epoch_confusion_matrix(tp, fp, fn, tn, save_path):
     """
