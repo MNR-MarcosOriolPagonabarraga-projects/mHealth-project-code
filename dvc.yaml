@@ -1,0 +1,8 @@
+stages:
+  process_data:
+    cmd: python scripts/build_dataset.py
+    deps:
+      - scripts/build_dataset.py
+    outs:
+      - data/processed/sleep_stage/
+      - data/processed/arousal/

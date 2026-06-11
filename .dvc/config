@@ -1,0 +1,5 @@
+[core]
+    remote = mhealth-remote
+['remote "mhealth-remote"']
+    url = s3://mhealth-sleep/
+    endpointurl = http://79.72.52.60:9100
