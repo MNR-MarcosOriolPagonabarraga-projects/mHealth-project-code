@@ -2,9 +2,7 @@ import torch
 import numpy as np
 from scipy.signal import iirnotch, butter, sosfiltfilt, filtfilt, welch, spectrogram
 
-from src.config import PreprocessConfig
-
-
+from offline.config import PreprocessConfig
 
 def build_filters(cfg: PreprocessConfig):
     sos_bp = butter(

@@ -8,7 +8,7 @@ from tqdm import tqdm
 from sklearn.metrics import accuracy_score, recall_score, f1_score
 
 from src.networks.dual_branch import FragmentSleepNet
-from src.dataset import PhysNetDualDataset 
+from offline.dataset import PhysNetDualDataset 
 
 
 def main():

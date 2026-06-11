@@ -1,42 +1,8 @@
 from dataclasses import dataclass, field
 
-FS = 200  # Hz
-
-ALL_CHANNELS = [
-    "F3-M2",
-    "F4-M1",
-    "C3-M2",
-    "C4-M1",
-    "O1-M2",
-    "O2-M1",
-    "E1-M2",
-    "Chin1-Chin2",
-    "ABD",
-    "CHEST",
-    "AIRFLOW",
-    "SaO2",
-    "ECG",
-]
-
-EEG_IDX = [0, 1, 2, 3, 4, 5]
-FOCUS_IDX = [2, 3]
-EEG_CHANNELS = {"C3-M2": 2, "C4-M1": 3}
-
-VIZ_START_MIN = 60
-VIZ_END_MIN = 70
-
-# Exploration plot colors
-_EXP_COLORS = {
-    "eeg_focus": "#2563eb",
-    "eeg_other": "#94a3b8",
-    "arousal": "#ef4444",
-    "non_arousal": "#3b82f6",
-    "no_scored": "#d1d5db",
-}
-
 @dataclass
 class PreprocessConfig:
-    original_fs: int = FS
+    original_fs: int = 200
     epoch_pre_sec: int = 10
     epoch_post_sec: int = 5
     windows_neg_ratio: int = 1
@@ -51,6 +17,21 @@ class PreprocessConfig:
         default_factory=lambda: {"C3-M2": 2, "C4-M1": 3}
     )
     clip_threshold: float = 200.0
+    all_channels = [
+        "F3-M2",
+        "F4-M1",
+        "C3-M2",
+        "C4-M1",
+        "O1-M2",
+        "O2-M1",
+        "E1-M2",
+        "Chin1-Chin2",
+        "ABD",
+        "CHEST",
+        "AIRFLOW",
+        "SaO2",
+        "ECG",
+    ]
     
     def __post_init__(self) -> None:
         if self.welch_nperseg is None:
@@ -68,4 +49,4 @@ class PreprocessConfig:
     
     @property
     def fs(self) -> int:
-        return FS // self.downsample_factor
+        return self.original_fs // self.downsample_factor

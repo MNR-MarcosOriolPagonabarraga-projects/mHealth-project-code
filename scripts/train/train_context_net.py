@@ -7,8 +7,8 @@ from tqdm import tqdm
 from datetime import datetime
 
 from src.networks.dual_branch import EEGContextNet
-from src.dataset import PhysNetContextDataset 
-from src.viz import plot_history, plot_epoch_confusion_matrix
+from offline.dataset import PhysNetContextDataset 
+from offline.viz import plot_history, plot_epoch_confusion_matrix
 
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")

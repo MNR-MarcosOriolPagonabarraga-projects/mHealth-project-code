@@ -7,7 +7,7 @@ from tqdm import tqdm
 from datetime import datetime
 
 from src.networks.micro_unet import MicroSleepArousalUNet, BCEDiceLoss
-from src.dataset import PhysNetSignalDataset 
+from offline.dataset import PhysNetSignalDataset 
 
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")

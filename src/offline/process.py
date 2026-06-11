@@ -2,8 +2,8 @@ import numpy as np
 from pathlib import Path
 
 from src.utils import load_signals_and_arousals, extract_classification_windows, downsample_signal
-from src.dsp import build_filters, filter_channel
-from src.config import PreprocessConfig
+from offline.dsp import build_filters, filter_channel
+from offline.config import PreprocessConfig
 
 class PatientProcessor:
     def __init__(self, cfg: PreprocessConfig) -> None:

@@ -1,8 +1,8 @@
 import random
 from pathlib import Path
 import numpy as np
-from src.process import PatientProcessor
-from src.config import PreprocessConfig
+from offline.process import PatientProcessor
+from offline.config import PreprocessConfig
 
 RAW_DIR = Path("data/raw")
 OUT_DIR = Path("data/processed")

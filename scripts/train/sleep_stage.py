@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 from src.networks.sleep_stage import LowPowerConvNet
-from src.viz import plot_history
+from offline.viz import plot_history
 
 # Global Training Configs
 BATCH_SIZE = 256

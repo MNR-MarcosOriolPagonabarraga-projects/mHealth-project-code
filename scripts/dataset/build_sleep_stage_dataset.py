@@ -2,9 +2,9 @@ import random
 from pathlib import Path
 import numpy as np
 
-from src.dsp import compute_full_recording_bandpower, apply_continuous_filters
+from offline.dsp import compute_full_recording_bandpower, apply_continuous_filters
 from src.utils import load_signals_and_arousals, find_stable_blocks, downsample_signal
-from src.config import PreprocessConfig
+from offline.config import PreprocessConfig
 
 RAW_DIR = Path("data/raw")
 OUT_DIR = Path("data/processed")
