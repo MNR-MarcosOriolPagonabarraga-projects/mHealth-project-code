@@ -1,4 +1,7 @@
-data/*
+data/raw/*
+data/test/*
+data/processed/*
+!data/processed/*.dvc
 *zig-cache/
 
 # Byte-compiled / optimized / DLL files

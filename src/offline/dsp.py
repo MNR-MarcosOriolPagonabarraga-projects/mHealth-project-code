@@ -1,8 +1,26 @@
 import torch
 import numpy as np
-from scipy.signal import iirnotch, butter, sosfiltfilt, filtfilt, welch, spectrogram
+from scipy.signal import iirnotch, butter, sosfilt, lfilter, welch, decimate
 
 from offline.config import PreprocessConfig
+
+
+def clip_outliers(signals: np.ndarray, clip_threshold: float = 200.0) -> np.ndarray:
+    # Clip outliers based on a multiple of the standard deviation
+    mean = np.mean(signals, axis=1, keepdims=True)
+    return np.clip(signals, mean - clip_threshold, mean + clip_threshold)
+
+
+def downsample_all(factor: int, *arrays: np.ndarray) -> tuple:
+    """
+    Downsamples any number of arrays by the given factor.
+    Always returns a tuple of the same length as the input.
+    """
+    if factor <= 1:
+        return arrays
+    
+    return tuple(arr[::factor] for arr in arrays)
+
 
 def build_filters(cfg: PreprocessConfig):
     sos_bp = butter(
@@ -16,20 +34,21 @@ def build_filters(cfg: PreprocessConfig):
     return sos_bp, b_notch, a_notch
 
 
-def filter_channel(sig: np.ndarray, sos_bp, b_notch, a_notch) -> np.ndarray:
-    sig = sosfiltfilt(sos_bp, sig)
-    sig = filtfilt(b_notch, a_notch, sig)
+def filter_channel_causal(sig: np.ndarray, sos_bp, b_notch, a_notch) -> np.ndarray:
+    sig, _ = sosfilt(sos_bp, sig)
+    sig = lfilter(b_notch, a_notch, sig)
     return sig.astype(np.float32)
 
-def apply_continuous_filters(signals_raw: np.ndarray, cfg) -> np.ndarray:
+
+def apply_causal_filters(signals_raw: np.ndarray, cfg) -> np.ndarray:
         sos_bp, b_notch, a_notch = build_filters(cfg)
         if signals_raw.ndim > 1:
             filtered_signals = np.stack([
-                filter_channel(chann, sos_bp, b_notch, a_notch) 
+                filter_channel_causal(chann, sos_bp, b_notch, a_notch) 
                 for chann in signals_raw
             ])
         else:
-            filtered_signals = filter_channel(signals_raw, sos_bp, b_notch, a_notch)
+            filtered_signals = filter_channel_causal(signals_raw, sos_bp, b_notch, a_notch)
         return filtered_signals
 
 
@@ -48,6 +67,7 @@ def compute_psd(sig_win: np.ndarray, cfg: PreprocessConfig):
     mask = (freqs >= low) & (freqs <= high)
     return freqs[mask], psd[mask]
 
+
 def extract_stft_features(batch_signals: torch.Tensor, fs: int = 100, device: str = 'cuda') -> torch.Tensor:
     """
     Args:
@@ -59,9 +79,9 @@ def extract_stft_features(batch_signals: torch.Tensor, fs: int = 100, device: st
     x_flattened = batch_signals.reshape(B * C, T)
     
     # STFT hyper-parameters
-    n_fft = int(2.0 * fs)                 # 200 samples
-    win_length = int(2.0 * fs)            # 200 samples
-    hop_length = int(0.25 * fs)           # 25 samples
+    n_fft = int(2.0 * fs)
+    win_length = int(2.0 * fs)
+    hop_length = int(0.25 * fs)
     
     window = torch.hann_window(win_length, device=device)
     
@@ -84,13 +104,11 @@ def extract_stft_features(batch_signals: torch.Tensor, fs: int = 100, device: st
     
     # Bin index 1 to 81 covers 0.5Hz to 40.0Hz
     log_psd_cropped = log_psd[:, 1:81, :]
-    
-    # Unflatten the dimensions back into a 4D batch structure
-    # Shape changes from (B * C, Freqs, Time) -> (B, C, Freqs, Time)
     _, Freq_Bins, Time_Bins = log_psd_cropped.shape
     spectrogram_4d = log_psd_cropped.view(B, C, Freq_Bins, Time_Bins)
     
     return spectrogram_4d
+
 
 def batch_extract_stft(signals_np: np.ndarray, fs: int = 100, batch_size: int = 2000) -> np.ndarray:
     """
@@ -117,6 +135,7 @@ def batch_extract_stft(signals_np: np.ndarray, fs: int = 100, batch_size: int = 
         
     # Stack all chunks back into one massive processed dataset
     return np.concatenate(processed_batches, axis=0)
+
 
 def compute_full_recording_bandpower(signals: np.ndarray, fs: int, n_fft: int = 512, hop_length: int = 200) -> np.ndarray:
     """
