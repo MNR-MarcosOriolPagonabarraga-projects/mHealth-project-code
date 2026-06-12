@@ -29,18 +29,18 @@ class ModelTrainer:
 
     def _compute_metrics(self, targets, preds):
         """Calculates all metrics and tags the primary one used for checkpointing."""
-        acc = balanced_accuracy_score(targets, preds)
+        bal_acc = balanced_accuracy_score(targets, preds)
         
         if self.task_type == "binary":
             f1 = f1_score(targets, preds, zero_division=0)
             prec = precision_score(targets, preds, zero_division=0)
             # For arousals, we keep Precision as the target to save the "best" model 
             # (based on your original train_arousals.py), but we return all of them.
-            return {'primary': prec, 'acc': acc, 'f1': f1}
+            return {'primary': prec, 'acc': bal_acc, 'f1': f1}
         else:
             f1 = f1_score(targets, preds, average='macro', zero_division=0)
             # For sleep stages, Accuracy is usually the standard target for the "best" model
-            return {'primary': acc, 'acc': acc, 'f1': f1}
+            return {'primary': bal_acc, 'acc': bal_acc, 'f1': f1}
 
     def fit(self, train_loader, val_loader, run_dir, class_names):
         for epoch in range(self.config.epochs):

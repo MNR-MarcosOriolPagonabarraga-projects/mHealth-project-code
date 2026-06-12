@@ -76,12 +76,12 @@ class TrainSleepStagesConfig:
     train_path: str = "data/processed/sleep_stage/sleep_stages_train.npz"
     test_path: str = "data/processed/sleep_stage/sleep_stages_test.npz"
     out_path: str = "models/sleep_stage"
-    stage_names = ['Wake', 'Light Sleep', 'Deep Sleep', 'REM']
+    class_names = ['Wake', 'Light Sleep', 'Deep Sleep', 'REM']
     batch_size: int = 256
     num_workers: int = 4
     train_balance: list = field(
-        default_factory=lambda: [1.1, 0.6, 1.5, 1.8]
+        default_factory=lambda: [1.0, 0.6, 1.4, 1.8]
     )
     lr: float = 5e-5
-    weight_decay: float = 1e-3
+    weight_decay: float = 1e-2
     eta_min: float = 1e-6

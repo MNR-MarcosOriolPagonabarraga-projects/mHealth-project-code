@@ -35,7 +35,7 @@ def main():
         scheduler=scheduler, device=device, config=cfg, task_type="multiclass"
     )
     
-    trainer.fit(train_loader, val_loader, RUN_DIR, class_names=cfg.stage_names)
+    trainer.fit(train_loader, val_loader, RUN_DIR, class_names=cfg.class_names)
 
 if __name__ == "__main__":
     main()
