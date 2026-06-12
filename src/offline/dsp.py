@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from scipy.signal import iirnotch, butter, sosfilt, lfilter, welch, decimate
 
-from offline.config import PreprocessConfig
+from src.offline.config import PreprocessConfig
 
 
 def clip_outliers(signals: np.ndarray, clip_threshold: float = 200.0) -> np.ndarray:
@@ -35,7 +35,7 @@ def build_filters(cfg: PreprocessConfig):
 
 
 def filter_channel_causal(sig: np.ndarray, sos_bp, b_notch, a_notch) -> np.ndarray:
-    sig, _ = sosfilt(sos_bp, sig)
+    sig = sosfilt(sos_bp, sig)
     sig = lfilter(b_notch, a_notch, sig)
     return sig.astype(np.float32)
 

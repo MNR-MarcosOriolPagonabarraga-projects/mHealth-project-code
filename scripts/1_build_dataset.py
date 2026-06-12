@@ -1,6 +1,7 @@
 import random
 from pathlib import Path
 import numpy as np
+from tqdm import tqdm
 
 from src.offline.config import PreprocessConfig
 from src.offline.dsp import apply_causal_filters, compute_full_recording_bandpower, clip_outliers, downsample_all
@@ -15,10 +16,9 @@ def process_patient(patient_dir: Path, cfg: PreprocessConfig) -> dict:
     # 1. Load Data
     signals, arousals, sleep_stages = load_signals_and_annotations(
         patient_dir, 
-        channels=list(cfg.eeg_indices.values()), 
-        include_sleep_stages=True
+        channels=list(cfg.channels.values())
     )
-    
+
     # 2. Continuous DSP
     signals = clip_outliers(signals, clip_threshold=cfg.clip_threshold)
     signals = apply_causal_filters(signals, cfg)
@@ -54,13 +54,11 @@ def process_patient(patient_dir: Path, cfg: PreprocessConfig) -> dict:
         "arousal": arousal_data,
         "stages": stage_data,
         "fs": cfg.fs,
-        "ch_names": list(cfg.eeg_indices.keys())
+        "ch_names": list(cfg.channels.keys())
     }
 
 def process_and_aggregate_split(patient_dirs: list[Path], cfg: PreprocessConfig, split_name: str):
-    """Processes a list of patients and saves massive aggregated .npz files."""
-    print(f"\n--- Processing {split_name.upper()} Set ({len(patient_dirs)} patients) ---")
-    
+    """Processes a list of patients and saves massive aggregated .npz files."""    
     # Arousal Accumulators
     arousal_eeg = []
     arousal_ctx = []
@@ -73,8 +71,7 @@ def process_and_aggregate_split(patient_dirs: list[Path], cfg: PreprocessConfig,
     fs = None
     ch_names = None
     
-    for p_dir in patient_dirs:
-        print(f"  -> Extracting {p_dir.name}...")
+    for p_dir in tqdm(patient_dirs):
         features = process_patient(p_dir, cfg)
         
         # Capture metadata from the first successful patient

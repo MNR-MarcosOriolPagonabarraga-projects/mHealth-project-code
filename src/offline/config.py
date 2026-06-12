@@ -44,7 +44,7 @@ class PreprocessConfig:
 
     @property
     def win_sec(self) -> int:
-        return self.epoch_pre_sec + self.epoch_post_sec
+        return self.arousal_pre_sec + self.arousal_post_sec
 
     @property
     def win_samples(self) -> int:

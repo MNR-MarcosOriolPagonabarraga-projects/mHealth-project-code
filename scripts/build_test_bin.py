@@ -1,10 +1,10 @@
+import sys
 import wfdb
 import numpy as np
 import os
 import glob
 
-# Path to your test directory
-data_dir = r"C:\Users\IDMOP0\Documents\master\mHealth-project-code\data\test"
+data_dir = sys.argv[1]
 
 # Find all header files
 records = glob.glob(os.path.join(data_dir, "*/*.hea"))

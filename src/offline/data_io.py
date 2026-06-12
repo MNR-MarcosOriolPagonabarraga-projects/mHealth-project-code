@@ -1,5 +1,5 @@
+import h5py
 import numpy as np
-from h5py import h5py
 from pathlib import Path
 from scipy.io import loadmat
 
@@ -21,9 +21,20 @@ def load_signals_and_annotations(
     with h5py.File(arousal_path, "r") as f:
         arousals = f["data/arousals"][()].flatten()
 
+        sleep_stages = np.full_like(arousals, fill_value=-1, dtype=np.int8)
+        stage_map = {
+            'wake': 0,
+            'nonrem1': 1, 
+            'nonrem2': 1,  # Merged N1/N2 into Light Sleep (1)
+            'nonrem3': 2,  # Deep Sleep (2)
+            'rem': 3       # REM (3)
+        }
+        
         grp = f["data/sleep_stages"]
-        for k in ("wake", "nonrem1", "nonrem2", "nonrem3", "rem", "undefined"):
-            sleep_stages[k] = grp[k][()].flatten()
+        for k, label_int in stage_map.items():
+            if k in grp:
+                mask = grp[k][()].flatten()
+                sleep_stages[mask == 1] = label_int
 
     return signals, arousals, sleep_stages
 
