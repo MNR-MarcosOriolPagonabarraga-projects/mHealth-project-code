@@ -53,3 +53,35 @@ class PreprocessConfig:
     @property
     def fs(self) -> int:
         return self.original_fs // self.downsample_factor
+
+
+@dataclass
+class TrainArousalsConfig:
+    epochs: int = 50
+    train_path: str = "data/processed/arousals/arousals_train.npz"
+    test_path: str = "data/processed/arousals/arousals_test.npz"
+    out_path: str = "models/arousals"
+    class_names = ["No Arousal", "Arousal"]
+    pred_threshold: float = 0.4
+    batch_size: int = 256
+    num_workers: int = 4
+    train_balance: float = 1
+    lr: float = 8e-4
+    weight_decay: float = 1e-3
+    eta_min: float = 1e-6
+
+@dataclass
+class TrainSleepStagesConfig:
+    epochs: int = 40
+    train_path: str = "data/processed/sleep_stage/sleep_stages_train.npz"
+    test_path: str = "data/processed/sleep_stage/sleep_stages_test.npz"
+    out_path: str = "models/sleep_stage"
+    stage_names = ['Wake', 'Light Sleep', 'Deep Sleep', 'REM']
+    batch_size: int = 256
+    num_workers: int = 4
+    train_balance: list = field(
+        default_factory=lambda: [1.1, 0.6, 1.5, 1.8]
+    )
+    lr: float = 5e-5
+    weight_decay: float = 1e-3
+    eta_min: float = 1e-6

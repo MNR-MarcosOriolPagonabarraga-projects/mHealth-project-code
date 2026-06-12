@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from scipy.signal import iirnotch, butter, sosfilt, lfilter, welch, decimate
+from scipy.signal import iirnotch, butter, sosfilt, lfilter, welch
 
 from src.offline.config import PreprocessConfig
 
@@ -19,7 +19,7 @@ def downsample_all(factor: int, *arrays: np.ndarray) -> tuple:
     if factor <= 1:
         return arrays
     
-    return tuple(arr[::factor] for arr in arrays)
+    return tuple(arr[..., ::factor] for arr in arrays)
 
 
 def build_filters(cfg: PreprocessConfig):

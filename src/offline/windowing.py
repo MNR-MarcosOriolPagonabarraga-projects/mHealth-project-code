@@ -25,16 +25,9 @@ def _get_doublet_context(timeline: np.ndarray, start_samp: int, win_samp: int, h
 
 def _merge_sleep_stage_masks(sleep_stages: dict) -> dict[int, np.ndarray]:
     """Combines string-based sleep stage masks into target integer classes."""
-    stage_map = {
-        0: [0],       # Wake 
-        1: [1, 2],    # Light Sleep (combining N1 and N2)
-        2: [3],       # Deep Sleep (N3)
-        3: [4]        # REM
-    }
-    
     merged = {}
-    for target_label, source_ints in stage_map.items():
-        mask = np.isin(sleep_stages, source_ints)
+    for target_label in range(4):
+        mask = sleep_stages == target_label
         
         if np.any(mask):
             merged[target_label] = mask
@@ -139,6 +132,6 @@ def extract_sleep_stage_windows(
                 all_labels.append(stage_int)
                 
     return {
-        "sleep_features": all_features,
-        "labels": all_labels
+        "sleep_features": np.array(all_features, dtype=np.float32),
+        "labels": np.array(all_labels, dtype=np.int32)
     }

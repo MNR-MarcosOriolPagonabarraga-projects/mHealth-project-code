@@ -2,7 +2,7 @@
 import os
 import sys
 import torch
-from src.networks.dual_branch import EEGContextNet
+from networks.arousal_net import EEGContextNet
 
 def export_to_onnx(model_path):
     # Initialize and load best weights

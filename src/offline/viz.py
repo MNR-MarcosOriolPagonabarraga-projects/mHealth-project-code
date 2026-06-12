@@ -2,6 +2,7 @@ import numpy as np
 import seaborn as sns
 from pathlib import Path
 import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix
 
 def plot_history(history: dict, save_path: Path):
     """
@@ -65,42 +66,33 @@ def plot_history(history: dict, save_path: Path):
     print(f"[+] Saved training evolution curves to: {save_file.name}")
     
 
-def plot_epoch_confusion_matrix(tp, fp, fn, tn, save_path):
+def plot_epoch_confusion_matrix(targets, preds, class_names, save_path: Path):
     """
-    Generates and saves a clean Seaborn heatmap of the confusion matrix for a specific epoch.
+    Universal Confusion Matrix. Works for Binary (Arousals) and Multiclass (Sleep Stages).
     """
-    # Construct the standard 2x2 confusion matrix array
-    # Format: [[TN, FP], [FN, TP]]
-    cm = np.array([[tn, fp], [fn, tp]])
+    num_classes = len(class_names)
+    cm = confusion_matrix(targets, preds, labels=list(range(num_classes)))
     
-    fig, ax = plt.subplots(figsize=(6, 5))
+    row_sums = cm.sum(axis=1, keepdims=True) + 1e-8
+    cm_percentages = (cm / row_sums) * 100
     
-    # Generate labels containing both raw count and relative percentage
-    total_samples = np.sum(cm) + 1e-8
-    labels = [
-        [f"{tn}\n({tn/total_samples*100:.1f}%)", f"{fp}\n({fp/total_samples*100:.1f}%)"],
-        [f"{fn}\n({fn/total_samples*100:.1f}%)", f"{tp}\n({tp/total_samples*100:.1f}%)"]
-    ]
-    labels = np.array(labels)
+    labels = np.empty_like(cm, dtype=object)
+    for r in range(num_classes):
+        for c in range(num_classes):
+            labels[r, c] = f"{cm[r, c]:,d}\n({cm_percentages[r, c]:.1f}%)"
+            
+    fig, ax = plt.subplots(figsize=(8, 7), dpi=100)
     
-    # Plot using a clean, readable color palette (Blues highlight true predictions nicely)
-    sns.heatmap(
-        cm, 
-        annot=labels, 
-        fmt="", 
-        cmap="Blues", 
-        cbar=False, 
-        ax=ax,
-        xticklabels=["No Arousal", "Arousal"],
-        yticklabels=["No Arousal", "Arousal"],
-        annot_kws={"size": 11, "weight": "bold"}
-    )
+    # FIX: Pass cm_percentages to drive the color, and lock the scale to 0-100
+    sns.heatmap(cm_percentages, annot=labels, fmt="", cmap="Blues", cbar=True, ax=ax,
+                vmin=0, vmax=100, 
+                xticklabels=class_names, yticklabels=class_names,
+                annot_kws={"size": 9, "weight": "bold"})
     
-    ax.set_title(f"Confusion Matrix", fontsize=13, fontweight='bold', pad=10)
+    ax.set_title("Confusion Matrix", fontsize=14, fontweight='bold', pad=15)
     ax.set_xlabel("Predicted Label", fontsize=11, labelpad=10)
     ax.set_ylabel("True Ground-Truth Label", fontsize=11, labelpad=10)
     
     plt.tight_layout()
-    # Save with a sequential naming format inside your timestamped RUN_DIR
-    plt.savefig(save_path / f"confusion_matrix.png", dpi=150)
+    plt.savefig(save_path / "best_model_confusion_matrix.png", bbox_inches='tight')
     plt.close(fig)
