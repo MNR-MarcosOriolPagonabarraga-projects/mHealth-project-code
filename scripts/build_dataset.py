@@ -3,7 +3,7 @@ from pathlib import Path
 import numpy as np
 from tqdm import tqdm
 
-from src.offline.config import PreprocessConfig
+from src.config import PreprocessConfig
 from src.offline.dsp import apply_causal_filters, compute_full_recording_bandpower, clip_outliers, downsample_all
 from src.offline.windowing import extract_arousal_windows, extract_sleep_stage_windows
 from src.offline.data_io import load_signals_and_annotations

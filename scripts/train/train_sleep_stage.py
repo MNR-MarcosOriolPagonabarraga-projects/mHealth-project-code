@@ -6,7 +6,7 @@ from pathlib import Path
 
 from src.networks.sleep_stage_net import SleepStageNet
 from src.offline.dataset import SleepStageDataset 
-from src.offline.config import TrainSleepStagesConfig
+from src.config import TrainSleepStagesConfig
 from src.offline.trainer import ModelTrainer
 
 def main():

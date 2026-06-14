@@ -1,0 +1,83 @@
+digraph MainSampleLoop {
+    // Global Graph Settings
+    rankdir=TB;
+    fontname="Helvetica,Arial,sans-serif";
+    splines=ortho;
+    nodesep=0.8;
+    ranksep=0.6;
+    pad=0.5;
+
+    // Default Node Styles
+    node [fontname="Helvetica,Arial,sans-serif", fontsize=11, penwidth=1.5];
+    edge [fontname="Helvetica,Arial,sans-serif", fontsize=10, color="#495057", penwidth=1.5];
+
+    // Node Definitions by Type
+    node [shape=oval, style="filled", fillcolor="#212529", color="#212529", fontcolor="white"];
+    Start [label="Get Next Raw Sample\n(ch0, ch1)"];
+    End [label="Wait for Next Sample"];
+
+    node [shape=box, style="rounded,filled", fillcolor="#e9ecef", color="#ced4da", fontcolor="black"];
+    ApplyNotch [label="IIR Notch Filter\n(State: zi_notch)"];
+    ApplyBP [label="SOS Bandpass Filter\n(State: zi_sos)"];
+    ApplyDS [label="Downsampler\n(Increment Counter)"];
+    
+    PushTemp [label="Push to Raw History Buffer\nPush to Arousal Temporal Buffer\nIncrement sample & STFT counters"];
+    
+    ComputeSTFT [label="Unroll Raw History\nApply Hann Window & Pad\nCompute FFT & Sum Bins"];
+    PushCtx [label="Push to Arousal Context Buffer\nPush to Sleep Context Buffer"];
+
+    PrepTensors [label="Unroll Context & Temporal Buffers\nApply Z-Score Normalization"];
+    RunModels [label="Run ArousalNet Forward Pass\nRun SleepStageNet Forward Pass"];
+    SavePreds [label="Append Logits to Results List"];
+
+    node [shape=diamond, style="filled", fillcolor="#fff3cd", color="#ffecb5"];
+    CheckValidDS [label="Downsample\nTriggered?"];
+    CheckSTFT [label="STFT Counter\n>= 50?"];
+    CheckInfer [label="Sample Counter\n% 500 == 0?"];
+
+    node [shape=cylinder, style="filled", fillcolor="#d1e7dd", color="#badbcc"];
+    BufTemp [label="Temporal Buffers"];
+    BufCtx [label="Context Buffers"];
+
+    // ================== FLOW ROUTING ==================
+
+    // 1. DSP Pipeline
+    Start -> ApplyNotch;
+    ApplyNotch -> ApplyBP;
+    ApplyBP -> ApplyDS;
+    ApplyDS -> CheckValidDS;
+
+    // 2. Downsample Condition
+    CheckValidDS -> End [label="No (Drop)", color="#dc3545", fontcolor="#dc3545"];
+    CheckValidDS -> PushTemp [label="Yes (Keep)", color="#198754", fontcolor="#198754", style="bold"];
+
+    // Buffer interaction
+    PushTemp -> BufTemp [style="dashed", color="#6c757d", arrowhead="none"];
+    
+    // 3. STFT Trigger Condition
+    PushTemp -> CheckSTFT;
+    CheckSTFT -> CheckInfer [label="No", color="#dc3545", fontcolor="#dc3545"];
+    CheckSTFT -> ComputeSTFT [label="Yes (Every 0.5s)", color="#198754", fontcolor="#198754", style="bold"];
+    
+    ComputeSTFT -> PushCtx;
+    PushCtx -> BufCtx [style="dashed", color="#6c757d", arrowhead="none"];
+    PushCtx -> CheckInfer;
+
+    // 4. Inference Trigger Condition
+    CheckInfer -> End [label="No", color="#dc3545", fontcolor="#dc3545"];
+    CheckInfer -> PrepTensors [label="Yes (Every 5.0s)", color="#0d6efd", fontcolor="#0d6efd", style="bold"];
+    
+    // Buffer interaction
+    BufTemp -> PrepTensors [style="dashed", color="#6c757d", arrowhead="none"];
+    BufCtx -> PrepTensors [style="dashed", color="#6c757d", arrowhead="none"];
+
+    PrepTensors -> RunModels;
+    RunModels -> SavePreds;
+    SavePreds -> End;
+
+    // Return to start
+    End -> Start [style="dotted", color="#adb5bd", label="Loop back"];
+
+    // Graph Layout Hints (Ensures linear vertical layout for the main trunk)
+    {rank=same; CheckValidDS; End}
+}

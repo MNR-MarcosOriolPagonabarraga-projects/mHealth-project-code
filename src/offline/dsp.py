@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from scipy.signal import iirnotch, butter, sosfilt, lfilter, welch
 
-from src.offline.config import PreprocessConfig
+from src.config import PreprocessConfig
 
 
 def clip_outliers(signals: np.ndarray, clip_threshold: float = 200.0) -> np.ndarray:

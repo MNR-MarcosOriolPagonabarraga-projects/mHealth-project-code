@@ -20,6 +20,15 @@ class PreprocessConfig:
     channels: dict = field(
         default_factory=lambda: {"C3-M2": 2, "C4-M1": 3}
     )
+    bands: list = field(
+        default_factory=lambda: [
+            (0.5, 4.0),   # Delta
+            (4.0, 8.0),   # Theta
+            (8.0, 12.0),  # Alpha
+            (12.0, 16.0), # Beta
+            (16.0, 30.0)  # Gamma
+        ]
+    )
     clip_threshold: float = 200.0
     all_channels = [
         "F3-M2",
@@ -57,12 +66,12 @@ class PreprocessConfig:
     
     @property
     def sleep_tensor_shape(self) -> tuple:
-        return (1, 20, self.sleep_win_sec*self.fs/self.hop_length)
+        return (1, 20, int(self.sleep_win_sec*self.fs/self.hop_length))
     
     @property
     def arousal_tensor_shape(self) -> list[tuple]:
         eeg_signal = (1, len(self.channels), self.win_samples)
-        context = (1, 10, 595)
+        context = (1, 10, 115)
 
         return [eeg_signal, context]
 

@@ -1,5 +1,5 @@
 const std = @import("std");
-const fft = @import("fft.zig"); // Assuming you have your FFT implemented here
+const fft = @import("fft.zig");
 
 pub const Biquad = struct {
     b0: f32,
@@ -96,7 +96,7 @@ pub fn compute_bandpowers(signal_win_200: []const f32, out_bands: *[5]f32) void 
         for (rng[0]..rng[1]) |i| {
             sum += power_spec[i];
         }
-        out_bands[b_idx] = @log(1.0 + sum); // log1p just like dsp.py
+        out_bands[b_idx] = @log(1.0 + sum);
     }
 }
 
@@ -108,6 +108,7 @@ pub fn zscore_normalize(data: []f32) void {
     var sq_sum: f32 = 0;
     for (data) |val| sq_sum += (val - mean) * (val - mean);
     var std_dev = @sqrt(sq_sum / @as(f32, @floatFromInt(data.len)));
+
     if (std_dev < 1e-8) std_dev = 1e-8;
 
     for (data) |*val| val.* = (val.* - mean) / std_dev;

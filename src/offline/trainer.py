@@ -1,8 +1,7 @@
 import torch
 import torch.nn as nn
 from tqdm import tqdm
-import numpy as np
-from sklearn.metrics import f1_score, balanced_accuracy_score, accuracy_score
+from sklearn.metrics import f1_score, balanced_accuracy_score
 from src.offline.viz import plot_history, plot_epoch_confusion_matrix
 
 class ModelTrainer:

@@ -4,8 +4,7 @@ import torch
 import numpy as np
 from onnxruntime.quantization import quantize_static, CalibrationDataReader
 
-# Load all configurations
-from src.offline.config import PreprocessConfig, TrainArousalsConfig, TrainSleepStagesConfig
+from src.config import PreprocessConfig, TrainArousalsConfig, TrainSleepStagesConfig
 
 # Load both model architectures
 from src.networks.arousal_net import ArousalNet 
@@ -35,7 +34,7 @@ class GenericCalibrator(CalibrationDataReader):
                 arr = np.expand_dims(sample_tuple[i], axis=0)
                 
                 # If this is the arousal context window, apply your required transpose
-                if onnx_name == "context_input":
+                if onnx_name in ["context_input", "sleep_features"]:
                     arr = arr.transpose(0, 2, 1)
                     
                 feed_dict[onnx_name] = arr

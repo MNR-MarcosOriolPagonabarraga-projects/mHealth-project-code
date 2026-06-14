@@ -6,7 +6,7 @@ from pathlib import Path
 
 from src.networks.arousal_net import ArousalNet, WeightedFocalWithLogitsLoss
 from src.offline.dataset import ArousalsDataset 
-from src.offline.config import TrainArousalsConfig
+from src.config import TrainArousalsConfig
 from src.offline.trainer import ModelTrainer
 
 def main():
