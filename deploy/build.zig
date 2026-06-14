@@ -23,13 +23,13 @@ pub fn build(b: *std.Build) void {
 
     // Sleep Phase Model
     exe.addCSourceFile(.{
-        .file = .{ .path = "src/models/sleep-phase/sleep_phase_model.c" },
+        .file = .{ .path = "models/sleep_stage/sleep_stage_detector.c" },
         .flags = c_flags,
     });
 
     // AROUSAL DETECTOR MODEL
     exe.addCSourceFile(.{
-        .file = .{ .path = "src/models/arousals/arousal_detector.c" },
+        .file = .{ .path = "models/arousals/arousal_detector.c" },
         .flags = c_flags,
     });
 

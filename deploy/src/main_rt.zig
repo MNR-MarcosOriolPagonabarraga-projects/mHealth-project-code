@@ -37,7 +37,7 @@ export fn pipeline_feed_sample(raw_ch0: f32, raw_ch1: f32) void {
             buffers.prep_tensors_for_inference();
 
             // Fire model evaluations locally inside the hardware runtime memory layout
-            SleepModel.sleep_phase_entry(&buffers.sleep_context, &global_sleep_logits);
+            SleepModel.sleep_stage_entry(&buffers.sleep_context, &global_sleep_logits);
             ArousalModel.arousal_detector_entry(&buffers.arousal_temporal, &buffers.arousal_context, &global_arousal_logits);
         }
     }
