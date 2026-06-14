@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 import numpy as np
-from sklearn.metrics import f1_score, balanced_accuracy_score, precision_score
+from sklearn.metrics import f1_score, balanced_accuracy_score, accuracy_score
 from src.offline.viz import plot_history, plot_epoch_confusion_matrix
 
 class ModelTrainer:
@@ -33,16 +33,12 @@ class ModelTrainer:
         
         if self.task_type == "binary":
             f1 = f1_score(targets, preds, zero_division=0)
-            prec = precision_score(targets, preds, zero_division=0)
-            # For arousals, we keep Precision as the target to save the "best" model 
-            # (based on your original train_arousals.py), but we return all of them.
-            return {'primary': prec, 'acc': bal_acc, 'f1': f1}
+            return {'primary': bal_acc, 'acc': bal_acc, 'f1': f1}
         else:
             f1 = f1_score(targets, preds, average='macro', zero_division=0)
-            # For sleep stages, Accuracy is usually the standard target for the "best" model
             return {'primary': bal_acc, 'acc': bal_acc, 'f1': f1}
 
-    def fit(self, train_loader, val_loader, run_dir, class_names):
+    def fit(self, train_loader, val_loader, out_model_path, class_names):
         for epoch in range(self.config.epochs):
             # --- TRAIN ---
             self.model.train()
@@ -97,9 +93,10 @@ class ModelTrainer:
 
             # --- CHECKPOINTING ---
             # We use metrics['primary'] (Precision for binary, Acc for multiclass) to save the best weights
-            if metrics['primary'] > self.best_metric:
+            run_dir = out_model_path.parent
+            if metrics['primary'] > self.best_metric and metrics['f1'] > 0.0:
                 self.best_metric = metrics['primary']
-                torch.save(self.model.state_dict(), run_dir / "best_model.pt")
+                torch.save(self.model.state_dict(), out_model_path)
                 plot_epoch_confusion_matrix(all_targets, all_preds, class_names, run_dir)
                 
             plot_history(self.history, run_dir)

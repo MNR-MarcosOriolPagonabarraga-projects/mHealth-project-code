@@ -47,7 +47,7 @@ def process_patient(patient_dir: Path, cfg: PreprocessConfig) -> dict:
     
     stage_data = extract_sleep_stage_windows(
         spectral_timeline, sleep_stages, 
-        fs=cfg.fs, hop_length=cfg.hop_length, win_sec=cfg.win_sec
+        fs=cfg.fs, hop_length=cfg.hop_length, win_sec=cfg.sleep_win_sec
     )
     
     return {
