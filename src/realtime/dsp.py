@@ -6,9 +6,8 @@ class CausalStatefulFilter:
         self.sos_bp = butter(4, [low_hz, high_hz], btype="bandpass", fs=fs, output="sos")
         self.b_notch, self.a_notch = iirnotch(notch_hz, notch_q, fs=fs)
         
-        # Track states (zi) exactly like Zig's x1, x2, y1, y2 buffers
-        self.zi_sos = sosfilt_zi(self.sos_bp)
-        self.zi_notch = lfilter_zi(self.b_notch, self.a_notch)
+        self.zi_notch = np.zeros(2, dtype=np.float32)
+        self.zi_sos = np.zeros((4, 2), dtype=np.float32)
 
     def process(self, x: float) -> float:
         x_arr = np.array([x])

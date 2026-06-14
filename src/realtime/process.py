@@ -11,13 +11,12 @@ class StreamProcessor:
 
         self.win_length = int(2.0 * cfg.fs)
         self.raw_history = CircularBuffer((self.num_channels, self.win_length))
-        
         self.arousal_temporal = CircularBuffer((self.num_channels, cfg.win_samples))
         self.arousal_context = CircularBuffer((self.features_per_step, cfg.arousal_tensor_shape[1][2]))
         
-        sleep_context_steps = int((cfg.sleep_win_sec * 2) * cfg.fs / cfg.hop_length)
-        self.sleep_context = CircularBuffer((self.features_per_step, sleep_context_steps))
-
+        # Managing the identical 120-step doublet structure split across a 2D array matrix
+        self.sleep_context = CircularBuffer((self.features_per_step * 2, 60))
+        self.sleep_packet_counter = 0
         self.sample_counter = 0
 
     def push(self, sample: np.ndarray) -> None:
@@ -31,16 +30,33 @@ class StreamProcessor:
     def _compute_stft_step(self) -> None:
         history = self.raw_history.get_ordered()
         features = compute_bandpowers(history, self.cfg.fs, self.cfg.n_fft)
-        
         self.arousal_context.push(features)
-        self.sleep_context.push(features)
+        
+        # Replicate the Zig layout routing math
+        t = self.sleep_packet_counter % 60
+        offset = (self.sleep_packet_counter // 60) * 10
+        
+        self.sleep_context.buffer[offset:offset+10, t] = features
+        self.sleep_packet_counter = (self.sleep_packet_counter + 1) % 120
 
     def extract_sleep_tensor(self) -> np.ndarray:
-        """Returns the Doublet context (Past + Current) aligned for the Sleep Stage Net."""
-        history = self.sleep_context.get_ordered()
-        half_idx = history.shape[1] // 2
+        """Unrolls the doublet context cleanly into Past (0:10) and Current (10:20)."""
+        unrolled = np.zeros((20, 60), dtype=np.float32)
         
-        past = history[:, :half_idx]
-        current = history[:, half_idx:]
-        
-        return np.concatenate([past, current], axis=0)
+        for i in range(60):
+            # Resolve the circular indices for the Oldest step (Past) and Newest step (Current)
+            past_idx = (self.sleep_packet_counter + i) % 120
+            curr_idx = (self.sleep_packet_counter + 60 + i) % 120
+            
+            # Map physical locations in the buffer
+            past_row_base = (past_idx // 60) * 10
+            past_col = past_idx % 60
+            
+            curr_row_base = (curr_idx // 60) * 10
+            curr_col = curr_idx % 60
+            
+            # Pack cleanly into the top and bottom halves
+            unrolled[0:10, i] = self.sleep_context.buffer[past_row_base : past_row_base + 10, past_col]
+            unrolled[10:20, i] = self.sleep_context.buffer[curr_row_base : curr_row_base + 10, curr_col]
+            
+        return unrolled

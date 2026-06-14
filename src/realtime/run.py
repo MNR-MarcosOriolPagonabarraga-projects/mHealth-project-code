@@ -104,6 +104,6 @@ if __name__ == "__main__":
 
     run_pipeline(
         bin_path=Path(args.bin),
-        arousal_out=Path("py_arousal_preds.csv"),
-        sleep_out=Path("py_sleep_preds.csv")
+        arousal_out=Path("outputs/py_arousal_preds.csv"),
+        sleep_out=Path("outputs/py_sleep_preds.csv")
     )
