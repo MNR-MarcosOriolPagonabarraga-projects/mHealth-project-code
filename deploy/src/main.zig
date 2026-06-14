@@ -3,11 +3,11 @@ const dsp = @import("dsp.zig");
 const process = @import("process.zig");
 
 const SleepModel = @cImport({
-    @cInclude("models/sleep-phase/sleep_stage_detector.h");
+    @cInclude("../models/sleep_stage/sleep_stage_detector.h");
 });
 
 const ArousalModel = @cImport({
-    @cInclude("models/arousals/arousal_detector.h");
+    @cInclude("../models/arousals/arousal_detector.h");
 });
 
 pub fn main() !void {
@@ -29,7 +29,7 @@ pub fn main() !void {
         std.process.exit(1);
     };
 
-    try process_recording(bin_path, "sleep_preds.csv", "arousal_preds.csv");
+    try process_recording(bin_path, "../outputs/sleep_preds.csv", "../outputs/arousal_preds.csv");
 }
 
 pub fn process_recording(bin_path: []const u8, sleep_csv_path: []const u8, arousal_csv_path: []const u8) !void {
@@ -70,6 +70,11 @@ pub fn process_recording(bin_path: []const u8, sleep_csv_path: []const u8, arous
             buffers.push_sample(ds_ch0.?, ds_ch1.?);
             sample_count_100hz += 1;
 
+            if (sample_count_100hz >= 100000) {
+                std.debug.print("Reached 1000s limit ({d} samples). Breaking early for test...\n", .{sample_count_100hz});
+                break;
+            }
+
             // Trigger predictions every 5 seconds (500 samples)
             if (sample_count_100hz % 500 == 0) {
                 const current_time_s = @as(f32, @floatFromInt(sample_count_100hz)) / 100.0;
@@ -77,7 +82,7 @@ pub fn process_recording(bin_path: []const u8, sleep_csv_path: []const u8, arous
 
                 // 1. Sleep Phase Prediction
                 var sleep_logits = [_]f32{0} ** 4;
-                SleepModel.sleep_phase_entry(@as([*c]const [60][20]f32, @ptrCast(&buffers.sleep_context)), &sleep_logits);
+                SleepModel.sleep_stage_entry(&buffers.sleep_context, &sleep_logits);
                 try sleep_writer.print("{d:.1},{d:.4},{d:.4},{d:.4},{d:.4}\n", .{ current_time_s, sleep_logits[0], sleep_logits[1], sleep_logits[2], sleep_logits[3] });
 
                 // 2. Arousal Prediction

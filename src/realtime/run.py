@@ -60,6 +60,10 @@ def run_pipeline(bin_path: Path, arousal_out: Path, sleep_out: Path):
         if valid_ds:
             processor.push(ds_sample)
 
+            if processor.sample_counter >= 100000:
+                print(f"\n[!] Reached 1000s limit ({processor.sample_counter} samples). Breaking early for test...")
+                break
+
             # 3. Check for 5-second inference trigger
             if processor.sample_counter % (5 * cfg.fs) == 0 and processor.sample_counter > 0:
                 current_time_s = processor.sample_counter / cfg.fs

@@ -4330,7 +4330,7 @@ FUNC_PREFIX void node_fc_bias_DequantizeLinear( const int32_t x[4], const float 
 	/* DequantizeLinear */
 	for (unsigned i0 = 0; i0 < 4; i0++)
 	{
-		y[i0] = (x[i0] - x_zero_point[i1]) * x_scale[i1];
+		y[i0] = (x[i0] - x_zero_point[0]) * x_scale[0];
 	}
 }
 
@@ -4372,7 +4372,7 @@ FUNC_PREFIX void node_onnx__Conv_31_DequantizeLinear( const int32_t x[32], const
 	/* DequantizeLinear */
 	for (unsigned i0 = 0; i0 < 32; i0++)
 	{
-		y[i0] = (x[i0] - x_zero_point[i1]) * x_scale[i1];
+		y[i0] = (x[i0] - x_zero_point[0]) * x_scale[0];
 	}
 }
 
@@ -4400,7 +4400,7 @@ FUNC_PREFIX void node_onnx__Conv_34_DequantizeLinear( const int32_t x[64], const
 	/* DequantizeLinear */
 	for (unsigned i0 = 0; i0 < 64; i0++)
 	{
-		y[i0] = (x[i0] - x_zero_point[i1]) * x_scale[i1];
+		y[i0] = (x[i0] - x_zero_point[0]) * x_scale[0];
 	}
 }
 
@@ -4794,7 +4794,7 @@ FUNC_PREFIX void node_sleep_stage_logits_DequantizeLinear( const int8_t x[1][4],
 }
 
 
-void entry(const float tensor_sleep_features[1][20][60], float tensor_sleep_stage_logits[1][4]){
+void sleep_stage_entry(const float tensor_sleep_features[1][20][60], float tensor_sleep_stage_logits[1][4]){
 	node__Constant( tensor__Constant_output_0);
 	node_fc_bias_DequantizeLinear( tensor_fc_bias_quantized, tensor_fc_bias_quantized_scale, &tensor_fc_bias_quantized_zero_point, tu0.tensor_fc_bias);
 	node_fc_weight_DequantizeLinear( tensor_fc_weight_quantized, &tensor_fc_weight_scale, &tensor_fc_weight_zero_point, tu1.tensor_fc_weight_DequantizeLinear_Output);

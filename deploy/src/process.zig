@@ -13,7 +13,7 @@ pub const PipelineBuffers = struct {
     arousal_ctx_idx: usize = 0,
 
     // Sleep Buffers
-    sleep_context: [1][60][20]f32 = undefined, // 60 seconds (2x 30s)
+    sleep_context: [1][20][60]f32 = undefined, // 60 seconds (2x 30s)
     sleep_ctx_idx: usize = 0,
 
     stft_counter: usize = 0,
@@ -69,8 +69,8 @@ pub const PipelineBuffers = struct {
             const feature_offset = (flat_idx / 60) * 10;
 
             for (0..5) |b| {
-                self.sleep_context[0][t][feature_offset + b] = bands0[b];
-                self.sleep_context[0][t][feature_offset + 5 + b] = bands1[b];
+                self.sleep_context[0][feature_offset + b][t] = bands0[b];
+                self.sleep_context[0][feature_offset + 5 + b][t] = bands1[b];
             }
             self.sleep_ctx_idx = (self.sleep_ctx_idx + 1) % 120;
         }
@@ -110,7 +110,7 @@ pub const PipelineBuffers = struct {
             const dest_feat_offset = (i / 60) * 10;
 
             for (0..10) |f| {
-                self.sleep_context[0][dest_t][dest_feat_offset + f] = sleep_temp[0][src_t][src_feat_offset + f];
+                self.sleep_context[0][dest_feat_offset + f][dest_t] = sleep_temp[0][src_feat_offset + f][src_t];
             }
         }
 
@@ -120,7 +120,7 @@ pub const PipelineBuffers = struct {
 
             // Extract the time-series for a single feature
             for (0..60) |t| {
-                feature_slice[t] = self.sleep_context[0][t][f];
+                feature_slice[t] = self.sleep_context[0][f][t];
             }
 
             // Normalize it
@@ -128,7 +128,7 @@ pub const PipelineBuffers = struct {
 
             // Place it back into the main buffer
             for (0..60) |t| {
-                self.sleep_context[0][t][f] = feature_slice[t];
+                self.sleep_context[0][f][t] = feature_slice[t];
             }
         }
     }

@@ -4475,7 +4475,7 @@ FUNC_PREFIX void node_fusion_1_bias_DequantizeLinear( const int32_t x[64], const
 	/* DequantizeLinear */
 	for (unsigned i0 = 0; i0 < 64; i0++)
 	{
-		y[i0] = (x[i0] - x_zero_point[i1]) * x_scale[i1];
+		y[i0] = (x[i0] - x_zero_point[0]) * x_scale[0];
 	}
 }
 
@@ -4502,7 +4502,7 @@ FUNC_PREFIX void node_fusion_2_bias_DequantizeLinear( const int32_t x[64], const
 	/* DequantizeLinear */
 	for (unsigned i0 = 0; i0 < 64; i0++)
 	{
-		y[i0] = (x[i0] - x_zero_point[i1]) * x_scale[i1];
+		y[i0] = (x[i0] - x_zero_point[0]) * x_scale[0];
 	}
 }
 
@@ -4528,7 +4528,7 @@ FUNC_PREFIX void node_fusion_5_bias_DequantizeLinear( const int32_t x[1], const 
 	/* DequantizeLinear */
 	for (unsigned i0 = 0; i0 < 1; i0++)
 	{
-		y[i0] = (x[i0] - x_zero_point[i1]) * x_scale[i1];
+		y[i0] = (x[i0] - x_zero_point[0]) * x_scale[0];
 	}
 }
 
@@ -4570,7 +4570,7 @@ FUNC_PREFIX void node_onnx__Conv_138_DequantizeLinear( const int32_t x[32], cons
 	/* DequantizeLinear */
 	for (unsigned i0 = 0; i0 < 32; i0++)
 	{
-		y[i0] = (x[i0] - x_zero_point[i1]) * x_scale[i1];
+		y[i0] = (x[i0] - x_zero_point[0]) * x_scale[0];
 	}
 }
 
@@ -4598,7 +4598,7 @@ FUNC_PREFIX void node_onnx__Conv_141_DequantizeLinear( const int32_t x[64], cons
 	/* DequantizeLinear */
 	for (unsigned i0 = 0; i0 < 64; i0++)
 	{
-		y[i0] = (x[i0] - x_zero_point[i1]) * x_scale[i1];
+		y[i0] = (x[i0] - x_zero_point[0]) * x_scale[0];
 	}
 }
 
@@ -4626,7 +4626,7 @@ FUNC_PREFIX void node_onnx__Conv_144_DequantizeLinear( const int32_t x[16], cons
 	/* DequantizeLinear */
 	for (unsigned i0 = 0; i0 < 16; i0++)
 	{
-		y[i0] = (x[i0] - x_zero_point[i1]) * x_scale[i1];
+		y[i0] = (x[i0] - x_zero_point[0]) * x_scale[0];
 	}
 }
 
@@ -4654,7 +4654,7 @@ FUNC_PREFIX void node_onnx__Conv_147_DequantizeLinear( const int32_t x[32], cons
 	/* DequantizeLinear */
 	for (unsigned i0 = 0; i0 < 32; i0++)
 	{
-		y[i0] = (x[i0] - x_zero_point[i1]) * x_scale[i1];
+		y[i0] = (x[i0] - x_zero_point[0]) * x_scale[0];
 	}
 }
 
@@ -4723,7 +4723,7 @@ FUNC_PREFIX void node_temp_bn_init_bias_DequantizeLinear( const int32_t x[16], c
 	/* DequantizeLinear */
 	for (unsigned i0 = 0; i0 < 16; i0++)
 	{
-		y[i0] = (x[i0] - x_zero_point[i1]) * x_scale[i1];
+		y[i0] = (x[i0] - x_zero_point[0]) * x_scale[0];
 	}
 }
 
@@ -4749,7 +4749,7 @@ FUNC_PREFIX void node_temp_conv_fast_bias_DequantizeLinear( const int32_t x[8], 
 	/* DequantizeLinear */
 	for (unsigned i0 = 0; i0 < 8; i0++)
 	{
-		y[i0] = (x[i0] - x_zero_point[i1]) * x_scale[i1];
+		y[i0] = (x[i0] - x_zero_point[0]) * x_scale[0];
 	}
 }
 
@@ -4777,7 +4777,7 @@ FUNC_PREFIX void node_temp_conv_slow_bias_DequantizeLinear( const int32_t x[8], 
 	/* DequantizeLinear */
 	for (unsigned i0 = 0; i0 < 8; i0++)
 	{
-		y[i0] = (x[i0] - x_zero_point[i1]) * x_scale[i1];
+		y[i0] = (x[i0] - x_zero_point[0]) * x_scale[0];
 	}
 }
 
@@ -6974,7 +6974,7 @@ FUNC_PREFIX void node_arousal_event_logits_DequantizeLinear( const int8_t x[1], 
 }
 
 
-void entry(const float tensor_temporal_input[1][2][1500], const float tensor_context_input[1][10][115], float tensor_arousal_event_logits[1]){
+void arousal_detector_entry(const float tensor_temporal_input[1][2][1500], const float tensor_context_input[1][10][115], float tensor_arousal_event_logits[1]){
 	node__temporal_deep_temporal_deep_11_Constant( tensor__temporal_deep_temporal_deep_11_Constant_output_0);
 	node__temporal_deep_temporal_deep_11_Constant_1( tensor__temporal_deep_temporal_deep_11_Constant_1_output_0);
 	node__Constant( tensor__Constant_output_0);
